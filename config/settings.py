@@ -33,6 +33,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -150,6 +151,8 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:3000',
     'http://localhost:8000',
     'http://127.0.0.1:8000',
+    "http://127.0.0.1:5500",
+    "http://localhost:5500",
 ]
 
 # Logging Configuration
@@ -218,7 +221,8 @@ SPECTACULAR_SETTINGS = {
     'TITLE': 'Employee Management System API',
     'DESCRIPTION': 'Comprehensive REST API for Employee Management with MySQL integration, concurrency control, and async processing',
     'VERSION': '1.0.0',
-    'SERVE_PERMISSIONS': ['rest_framework.permissions.IsAuthenticated'],
+    # 'SERVE_PERMISSIONS': ['rest_framework.permissions.IsAuthenticated'], # Uncomment to require authentication for API docs
+    'SERVE_PERMISSIONS': ['rest_framework.permissions.AllowAny'],
     'SERVERS': [
         {'url': 'http://localhost:8000', 'description': 'Development'},
         {'url': 'http://127.0.0.1:8000', 'description': 'Local'},
@@ -240,3 +244,9 @@ THREAD_TIMEOUT = 300  # 5 minutes
 MAX_UPLOAD_SIZE = 5242880  # 5MB
 DATA_UPLOAD_MAX_MEMORY_SIZE = 5242880
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5242880
+
+
+CORS_ALLOWED_ORIGINS = [
+    "http://127.0.0.1:5500",
+    "http://localhost:5500",
+]

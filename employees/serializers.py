@@ -212,7 +212,11 @@ class AuditLogSerializer(serializers.ModelSerializer):
             'id', 'timestamp', 'user', 'user_name', 'action', 'content_type',
             'object_id', 'object_str', 'changes', 'ip_address'
         ]
-        read_only_fields = '__all__'
+        # FIX: Explicitly list fields instead of '__all__'
+        read_only_fields = [
+            'id', 'timestamp', 'user', 'action', 'content_type',
+            'object_id', 'object_str', 'changes', 'ip_address'
+        ]
 
 
 class BulkUploadJobSerializer(serializers.ModelSerializer):
@@ -253,7 +257,12 @@ class BulkUploadJobDetailSerializer(serializers.ModelSerializer):
             'error_log', 'progress_percentage', 'processing_time', 'started_at',
             'completed_at', 'created_at'
         ]
-        read_only_fields = '__all__'
+        # FIX: Explicitly list fields instead of '__all__'
+        read_only_fields = [
+            'id', 'uploaded_by', 'csv_file', 'status', 'total_records', 
+            'processed_records', 'successful_records', 'failed_records',
+            'error_log', 'started_at', 'completed_at', 'created_at'
+        ]
     
     def get_processing_time(self, obj):
         if obj.started_at and obj.completed_at:

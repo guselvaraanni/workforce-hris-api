@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Employee | Enterprise Workforce HRIS</title>
+
+    <link rel="stylesheet" href="css/styles.css" />
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet"
+    />
+</head>
+<body>
+
+<div class="app-layout">
+
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <h2>HRIS</h2>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="employees.html" class="active">Employees</a>
+            <a href="leaves.html">Leaves</a>
+            <a href="uploads.html">Uploads</a>
+            <a href="audit.html">Audit Logs</a>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+
+        <header class="topbar">
+            <div>
+                <h1>Employee Management</h1>
+                <p>Manage workforce profiles and departments</p>
+            </div>
+
+            <button class="primary-btn small-btn">Add Employee</button>
+        </header>
+
+        <div class="filter-bar">
+            <input type="text" placeholder="Search employees..." />
+
+            <select>
+                <option>All Departments</option>
+                <option>Engineering</option>
+                <option>Finance</option>
+                <option>HR</option>
+            </select>
+        </div>
+
+        <section class="table-section">
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Department</th>
+                        <th>Email</th>
+                        <th>Status</th>
+                        <th>Role</th>
+                    </tr>
+                </thead>
+
+                <tbody id="employeeTableBody">
+                    <!-- Employee rows will be dynamically inserted here -->
+            </table>
+
+        </section>
+
+    </main>
+
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
