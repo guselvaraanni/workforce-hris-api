@@ -1,67 +1,233 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Audit Logs | Enterprise Workforce HRIS</title>
-
-    <link rel="stylesheet" href="css/styles.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Logs - Enterprise HRIS</title>
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+    <div class="layout">
+        <div class="layout__sidebar" id="sidebar">
+            <div class="sidebar__header">
+                <div class="sidebar__logo">
+                    <div class="sidebar__logo-icon">📊</div>
+                    <span>HRIS</span>
+                </div>
+            </div>
 
-<div class="app-layout">
+            <nav class="sidebar__nav">
+                <li class="sidebar__item"><a href="dashboard.html" class="sidebar__link"><span class="sidebar__icon">📈</span><span>Dashboard</span></a></li>
+                <li class="sidebar__item"><a href="employees.html" class="sidebar__link"><span class="sidebar__icon">👥</span><span>Employees</span></a></li>
+                <li class="sidebar__item"><a href="departments.html" class="sidebar__link"><span class="sidebar__icon">🏢</span><span>Departments</span></a></li>
+                <li class="sidebar__item"><a href="leaves.html" class="sidebar__link"><span class="sidebar__icon">📅</span><span>Leave Requests</span></a></li>
+                <li class="sidebar__item"><a href="uploads.html" class="sidebar__link"><span class="sidebar__icon">📤</span><span>Bulk Uploads</span></a></li>
+                <li class="sidebar__item"><a href="audit.html" class="sidebar__link active"><span class="sidebar__icon">📋</span><span>Audit Logs</span></a></li>
+            </nav>
 
-    <aside class="sidebar">
-        <div class="sidebar-logo">
-            <h2>HRIS</h2>
+            <div class="sidebar__footer">
+                <button class="btn btn--secondary btn--block" onclick="logout()"><span>🚪</span><span>Logout</span></button>
+            </div>
         </div>
 
-        <nav class="sidebar-nav">
-            <a href="dashboard.html">Dashboard</a>
-            <a href="employees.html">Employees</a>
-            <a href="leaves.html">Leaves</a>
-            <a href="uploads.html">Uploads</a>
-            <a href="audit.html" class="active">Audit Logs</a>
-        </nav>
-    </aside>
+        <div class="layout__main">
+            <header class="layout__header">
+                <div class="header__left">
+                    <button class="header__toggle" id="sidebarToggle">☰</button>
+                    <h1 style="margin: 0;">Audit Logs</h1>
+                </div>
+                <div class="header__right">
+                    <div class="header__user">
+                        <div class="header__avatar" id="userAvatar">U</div>
+                        <span id="userInfo">User</span>
+                    </div>
+                </div>
+            </header>
 
-    <main class="main-content">
+            <div class="layout__content">
+                <div class="container">
+                    <div class="page-header">
+                        <div class="page-header__content">
+                            <h1>Activity Audit Trail</h1>
+                            <p style="margin: 0; color: var(--text-tertiary);">Complete system activity log</p>
+                        </div>
+                        <div class="page-header__actions">
+                            <button class="btn btn--secondary" onclick="loadAuditLogs()">
+                                <span>🔄</span>
+                                <span>Refresh</span>
+                            </button>
+                        </div>
+                    </div>
 
-        <header class="topbar">
-            <div>
-                <h1>Audit Logs</h1>
-                <p>Track system activity and changes</p>
-            </div>
-        </header>
+                    <!-- Filters -->
+                    <div class="filter-bar">
+                        <div class="filter-bar__search">
+                            <input type="text" class="form-input" id="searchInput" placeholder="Search user, action, object..." onkeyup="handleSearch()">
+                        </div>
+                        <div class="filter-bar__item">
+                            <label class="filter-bar__label">Action</label>
+                            <select class="form-select" id="actionFilter" onchange="handleFilter()">
+                                <option value="">All Actions</option>
+                                <option value="create">Create</option>
+                                <option value="update">Update</option>
+                                <option value="delete">Delete</option>
+                                <option value="approve">Approve</option>
+                                <option value="reject">Reject</option>
+                            </select>
+                        </div>
+                        <div class="filter-bar__item">
+                            <label class="filter-bar__label">Type</label>
+                            <select class="form-select" id="typeFilter" onchange="handleFilter()">
+                                <option value="">All Types</option>
+                                <option value="EmployeeProfile">Employee</option>
+                                <option value="LeaveRequest">Leave Request</option>
+                                <option value="Department">Department</option>
+                            </select>
+                        </div>
+                    </div>
 
-        <section class="timeline">
-
-            <div class="timeline-item">
-                <div class="timeline-dot"></div>
-
-                <div class="timeline-content">
-                    <h3>Leave Approved</h3>
-                    <p>John Doe approved annual leave request</p>
-                    <span>2 mins ago</span>
+                    <!-- Audit Table -->
+                    <div class="card">
+                        <div id="auditTableContainer">
+                            <!-- Loaded via JS -->
+                        </div>
+                    </div>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <div class="timeline-item">
-                <div class="timeline-dot"></div>
-
-                <div class="timeline-content">
-                    <h3>CSV Upload Completed</h3>
-                    <p>Bulk employee upload processed successfully</p>
-                    <span>15 mins ago</span>
-                </div>
+    <!-- Changes Modal -->
+    <div class="modal" id="changesModal">
+        <div class="modal__overlay"></div>
+        <div class="modal__content" style="max-width: 600px;">
+            <div class="modal__header">
+                <h2 class="modal__title">Changes Details</h2>
+                <button class="modal__close" onclick="Modal.close('changesModal')">×</button>
             </div>
+            <div class="modal__body">
+                <pre id="changesContent" style="background: rgba(99,102,241,0.05); padding: var(--spacing-lg); border-radius: var(--radius-md); overflow-x: auto;"></pre>
+            </div>
+            <div class="modal__footer">
+                <button class="btn btn--secondary" onclick="Modal.close('changesModal')">Close</button>
+            </div>
+        </div>
+    </div>
 
-            <div class="timeline-item">
-                <div class="timeline-dot"></div>
+    <script src="js/app.js"></script>
+    <script>
+        let allLogs = [];
+        let searchTerm = '';
+        let filterAction = '';
+        let filterType = '';
 
-                <div class="timeline-content">
-                    <h3>Department Created</h3>
-                    <p>New Finance department added</p>
-                    <span>1 hour ago</span>
-                </div>
+        async function loadAuditLogs() {
+            try {
+                document.getElementById('auditTableContainer').innerHTML = '<div class="loading"><div class="spinner"></div>Loading audit logs...</div>';
+
+                const res = await APIClient.get('/audit-logs/?ordering=-timestamp&page_size=200');
+                allLogs = res.results || res;
+
+                displayLogs();
+            } catch (error) {
+                console.error('Load logs error:', error);
+                Notification.error('Failed to load audit logs');
+                document.getElementById('auditTableContainer').innerHTML = '<div class="error-state"><p>Failed to load logs</p></div>';
+            }
+        }
+
+        function displayLogs() {
+            let filtered = allLogs;
+
+            // Search filter
+            if (searchTerm) {
+                const term = searchTerm.toLowerCase();
+                filtered = filtered.filter(log =>
+                    log.user_name?.toLowerCase().includes(term) ||
+                    log.action?.toLowerCase().includes(term) ||
+                    log.object_str?.toLowerCase().includes(term) ||
+                    log.object_id?.toLowerCase().includes(term)
+                );
+            }
+
+            // Action filter
+            if (filterAction) {
+                filtered = filtered.filter(log => log.action === filterAction);
+            }
+
+            // Type filter
+            if (filterType) {
+                filtered = filtered.filter(log => log.content_type === filterType);
+            }
+
+            if (filtered.length === 0) {
+                document.getElementById('auditTableContainer').innerHTML = '<div class="empty-state"><p>No audit logs found</p></div>';
+                return;
+            }
+
+            const html = `
+                <table class="data-table data-table--striped">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>User</th>
+                            <th>Action</th>
+                            <th>Type</th>
+                            <th>Object</th>
+                            <th>IP Address</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${filtered.map(log => `
+                            <tr>
+                                <td><small>${formatDateTime(log.timestamp)}</small></td>
+                                <td>${escapeHtml(log.user_name)}</td>
+                                <td><strong>${escapeHtml(log.action)}</strong></td>
+                                <td><small>${escapeHtml(log.content_type)}</small></td>
+                                <td><code>${escapeHtml(log.object_id)}</code></td>
+                                <td><small>${escapeHtml(log.ip_address || '-')}</small></td>
+                                <td>
+                                    ${log.changes && Object.keys(log.changes).length > 0
+                                        ? `<button class="btn btn--secondary btn--small" onclick="viewChanges(${log.id})">View</button>`
+                                        : '-'
+                                    }
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            document.getElementById('auditTableContainer').innerHTML = html;
+        }
+
+        function handleSearch() {
+            searchTerm = document.getElementById('searchInput').value;
+            displayLogs();
+        }
+
+        function handleFilter() {
+            filterAction = document.getElementById('actionFilter').value;
+            filterType = document.getElementById('typeFilter').value;
+            displayLogs();
+        }
+
+        function viewChanges(id) {
+            const log = allLogs.find(l => l.id === id);
+            if (log && log.changes) {
+                document.getElementById('changesContent').textContent = JSON.stringify(log.changes, null, 2);
+                Modal.open('changesModal');
+            } else {
+                Notification.error('No changes to display');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (AuthManager.isAuthenticated()) {
+                loadAuditLogs();
+            }
+        });
+    </script>
+</body>
 </html>

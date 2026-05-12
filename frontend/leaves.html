@@ -1,37 +1,459 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Leaves | Enterprise Workforce HRIS</title>
-
-    <link rel="stylesheet" href="css/styles.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leave Requests - Enterprise HRIS</title>
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+    <div class="layout">
+        <!-- Sidebar -->
+        <div class="layout__sidebar" id="sidebar">
+            <div class="sidebar__header">
+                <div class="sidebar__logo">
+                    <div class="sidebar__logo-icon">📊</div>
+                    <span>HRIS</span>
+                </div>
+            </div>
 
-<div class="app-layout">
+            <nav class="sidebar__nav">
+                <li class="sidebar__item">
+                    <a href="dashboard.html" class="sidebar__link">
+                        <span class="sidebar__icon">📈</span>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="employees.html" class="sidebar__link">
+                        <span class="sidebar__icon">👥</span>
+                        <span>Employees</span>
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="departments.html" class="sidebar__link">
+                        <span class="sidebar__icon">🏢</span>
+                        <span>Departments</span>
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="leaves.html" class="sidebar__link active">
+                        <span class="sidebar__icon">📅</span>
+                        <span>Leave Requests</span>
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="uploads.html" class="sidebar__link">
+                        <span class="sidebar__icon">📤</span>
+                        <span>Bulk Uploads</span>
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="audit.html" class="sidebar__link">
+                        <span class="sidebar__icon">📋</span>
+                        <span>Audit Logs</span>
+                    </a>
+                </li>
+            </nav>
 
-    <aside class="sidebar">
-        <div class="sidebar-logo">
-            <h2>HRIS</h2>
+            <div class="sidebar__footer">
+                <button class="btn btn--secondary btn--block" onclick="logout()">
+                    <span>🚪</span>
+                    <span>Logout</span>
+                </button>
+            </div>
         </div>
 
-        <nav class="sidebar-nav">
-            <a href="dashboard.html">Dashboard</a>
-            <a href="employees.html">Employees</a>
-            <a href="leaves.html" class="active">Leaves</a>
-            <a href="uploads.html">Uploads</a>
-            <a href="audit.html">Audit Logs</a>
-        </nav>
-    </aside>
+        <!-- Main Content -->
+        <div class="layout__main">
+            <header class="layout__header">
+                <div class="header__left">
+                    <button class="header__toggle" id="sidebarToggle">☰</button>
+                    <h1 style="margin: 0;">Leave Requests</h1>
+                </div>
+                <div class="header__right">
+                    <div class="header__user">
+                        <div class="header__avatar" id="userAvatar">U</div>
+                        <span id="userInfo">User</span>
+                    </div>
+                </div>
+            </header>
 
-    <main class="main-content">
+            <div class="layout__content">
+                <div class="container">
+                    <!-- Page Header -->
+                    <div class="page-header">
+                        <div class="page-header__content">
+                            <h1>Leave Request Management</h1>
+                            <p style="margin: 0; color: var(--text-tertiary);">Request and approve employee leaves</p>
+                        </div>
+                        <div class="page-header__actions">
+                            <button class="btn btn--primary" onclick="openRequestLeaveModal()">
+                                <span>📝</span>
+                                <span>Request Leave</span>
+                            </button>
+                        </div>
+                    </div>
 
-        <header class="topbar">
-            <div>
-                <h1>Leave Requests</h1>
-                <p>Approve and manage employee leaves</p>
+                    <!-- Tabs -->
+                    <div class="tabs" id="tabs">
+                        <button class="tab active" onclick="switchTab('my-requests')">My Requests</button>
+                        <button class="tab" onclick="switchTab('pending-approvals')" data-manager-only>Pending Approvals</button>
+                        <button class="tab" onclick="switchTab('all-leaves')" data-admin-only>All Leaves</button>
+                    </div>
+
+                    <!-- My Requests Tab -->
+                    <div class="tab-content active" id="my-requests">
+                        <div class="card">
+                            <div id="myRequestsContainer">
+                                <!-- Loaded via JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pending Approvals Tab -->
+                    <div class="tab-content" id="pending-approvals">
+                        <div class="card">
+                            <div id="pendingApprovalsContainer">
+                                <!-- Loaded via JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- All Leaves Tab -->
+                    <div class="tab-content" id="all-leaves">
+                        <div class="card">
+                            <div id="allLeavesContainer">
+                                <!-- Loaded via JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </header>
+        </div>
+    </div>
 
+    <!-- Request Leave Modal -->
+    <div class="modal" id="leaveModal">
+        <div class="modal__overlay"></div>
+        <div class="modal__content">
+            <div class="modal__header">
+                <h2 class="modal__title">Request Leave</h2>
+                <button class="modal__close" onclick="Modal.close('leaveModal')">×</button>
+            </div>
+            <div class="modal__body">
+                <form id="leaveForm" onsubmit="handleLeaveSubmit(event)">
+                    <div class="form-group">
+                        <label class="form-label required">Leave Type</label>
+                        <select name="leave_type" class="form-select" required>
+                            <option value="">Select leave type</option>
+                            <option value="Sick">Sick Leave</option>
+                            <option value="Casual">Casual Leave</option>
+                            <option value="Personal">Personal Leave</option>
+                            <option value="Unpaid">Unpaid Leave</option>
+                        </select>
+                    </div>
+                    <div class="grid grid--2col">
+                        <div class="form-group">
+                            <label class="form-label required">Start Date</label>
+                            <input type="date" name="start_date" class="form-input" required onchange="updateDuration()">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label required">End Date</label>
+                            <input type="date" name="end_date" class="form-input" required onchange="updateDuration()">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Duration</label>
+                        <input type="text" class="form-input" id="duration" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label required">Reason</label>
+                        <textarea name="reason" class="form-textarea" placeholder="State your reason for leave..." required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal__footer">
+                <button class="btn btn--secondary" onclick="Modal.close('leaveModal')">Cancel</button>
+                <button class="btn btn--primary" onclick="document.getElementById('leaveForm').dispatchEvent(new Event('submit'))">Submit Request</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Approval Modal -->
+    <div class="modal" id="approvalModal">
+        <div class="modal__overlay"></div>
+        <div class="modal__content">
+            <div class="modal__header">
+                <h2 class="modal__title" id="approvalTitle">Approve Leave Request</h2>
+                <button class="modal__close" onclick="Modal.close('approvalModal')">×</button>
+            </div>
+            <div class="modal__body">
+                <form id="approvalForm" onsubmit="handleApproval(event)">
+                    <div class="form-group">
+                        <label class="form-label required">Decision</label>
+                        <div style="display: flex; gap: var(--spacing-md);">
+                            <label style="flex: 1;">
+                                <input type="radio" name="action" value="approve" required>
+                                ✓ Approve
+                            </label>
+                            <label style="flex: 1;">
+                                <input type="radio" name="action" value="reject">
+                                ✗ Reject
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Notes</label>
+                        <textarea name="approval_notes" class="form-textarea" placeholder="Optional approval notes..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal__footer">
+                <button class="btn btn--secondary" onclick="Modal.close('approvalModal')">Cancel</button>
+                <button class="btn btn--primary" onclick="document.getElementById('approvalForm').dispatchEvent(new Event('submit'))">Submit Decision</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        let myLeaves = [];
+        let pendingLeaves = [];
+        let allLeaves = [];
+        let currentApprovalId = null;
+
+        async function loadLeaves() {
+            try {
+                // Load my requests
+                const myRes = await APIClient.get('/leave-requests/my_requests/');
+                myLeaves = myRes.results || myRes;
+                displayMyLeaves();
+
+                // Load pending approvals (if manager/admin)
+                try {
+                    const pendRes = await APIClient.get('/leave-requests/pending_approvals/');
+                    pendingLeaves = pendRes.results || pendRes;
+                    displayPendingApprovals();
+                } catch (e) {
+                    console.log('Not authorized for approvals');
+                }
+
+                // Load all leaves (if admin)
+                try {
+                    const allRes = await APIClient.get('/leave-requests/?page_size=100');
+                    allLeaves = allRes.results || allRes;
+                    displayAllLeaves();
+                } catch (e) {
+                    console.log('Not authorized to view all leaves');
+                }
+            } catch (error) {
+                console.error('Load leaves error:', error);
+                Notification.error('Failed to load leaves');
+            }
+        }
+
+        function displayMyLeaves() {
+            const container = document.getElementById('myRequestsContainer');
+            if (myLeaves.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>No leave requests yet</p></div>';
+                return;
+            }
+
+            container.innerHTML = `
+                <table class="data-table data-table--striped">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Dates</th>
+                            <th>Duration</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${myLeaves.map(leave => `
+                            <tr>
+                                <td>${escapeHtml(leave.leave_type)}</td>
+                                <td>${formatDate(leave.start_date)} - ${formatDate(leave.end_date)}</td>
+                                <td>${leave.duration_days} days</td>
+                                <td>${getStatusBadge(leave.status)}</td>
+                                <td>
+                                    <button class="btn btn--secondary btn--small" onclick="viewLeaveDetails(${leave.id})">View</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function displayPendingApprovals() {
+            const container = document.getElementById('pendingApprovalsContainer');
+            if (pendingLeaves.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>No pending approvals</p></div>';
+                return;
+            }
+
+            container.innerHTML = `
+                <table class="data-table data-table--striped">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Type</th>
+                            <th>Dates</th>
+                            <th>Duration</th>
+                            <th>Reason</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${pendingLeaves.map(leave => `
+                            <tr>
+                                <td><strong>${escapeHtml(leave.employee_name)}</strong></td>
+                                <td>${escapeHtml(leave.leave_type)}</td>
+                                <td>${formatDate(leave.start_date)} - ${formatDate(leave.end_date)}</td>
+                                <td>${leave.duration_days} days</td>
+                                <td>${escapeHtml(leave.reason?.substring(0, 50) || '-')}</td>
+                                <td>
+                                    <button class="btn btn--success btn--small" onclick="openApprovalModal(${leave.id}, 'approve')">Approve</button>
+                                    <button class="btn btn--danger btn--small" onclick="openApprovalModal(${leave.id}, 'reject')">Reject</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function displayAllLeaves() {
+            const container = document.getElementById('allLeavesContainer');
+            if (allLeaves.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>No leave requests</p></div>';
+                return;
+            }
+
+            container.innerHTML = `
+                <table class="data-table data-table--striped">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Type</th>
+                            <th>Dates</th>
+                            <th>Duration</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${allLeaves.map(leave => `
+                            <tr>
+                                <td><strong>${escapeHtml(leave.employee_name)}</strong></td>
+                                <td>${escapeHtml(leave.leave_type)}</td>
+                                <td>${formatDate(leave.start_date)} - ${formatDate(leave.end_date)}</td>
+                                <td>${leave.duration_days} days</td>
+                                <td>${getStatusBadge(leave.status)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+
+            loadUserInfo();
+        }
+
+        function openRequestLeaveModal() {
+            document.getElementById('leaveForm').reset();
+            FormHandler.clearErrors(document.getElementById('leaveForm'));
+            Modal.open('leaveModal');
+        }
+
+        function updateDuration() {
+            const startDate = new Date(document.querySelector('input[name="start_date"]').value);
+            const endDate = new Date(document.querySelector('input[name="end_date"]').value);
+
+            if (startDate && endDate && endDate >= startDate) {
+                const days = getDaysBetween(startDate, endDate);
+                document.getElementById('duration').value = days + ' day(s)';
+            }
+        }
+
+        async function handleLeaveSubmit(e) {
+            e.preventDefault();
+
+            const form = document.getElementById('leaveForm');
+            const data = {
+                leave_type: form.elements['leave_type'].value,
+                start_date: form.elements['start_date'].value,
+                end_date: form.elements['end_date'].value,
+                reason: form.elements['reason'].value
+            };
+
+            try {
+                await APIClient.post('/leave-requests/', data);
+                Notification.success('Leave request submitted');
+                Modal.close('leaveModal');
+                loadLeaves();
+            } catch (error) {
+                console.error('Submit error:', error);
+                Notification.error(error.message || 'Failed to submit leave request');
+                if (error.data && error.data.dates) {
+                    FormHandler.showErrors(form, { dates: error.data.dates });
+                }
+            }
+        }
+
+        function openApprovalModal(leaveId, action) {
+            currentApprovalId = leaveId;
+            document.getElementById('approvalTitle').textContent = action === 'approve' ? 'Approve Leave' : 'Reject Leave';
+            const form = document.getElementById('approvalForm');
+            form.reset();
+            form.elements['action'].value = action;
+            Modal.open('approvalModal');
+        }
+
+        async function handleApproval(e) {
+            e.preventDefault();
+
+            const form = document.getElementById('approvalForm');
+            const action = form.elements['action'].value;
+            const notes = form.elements['approval_notes'].value;
+
+            try {
+                const endpoint = action === 'approve'
+                    ? `/leave-requests/${currentApprovalId}/approve_leave/`
+                    : `/leave-requests/${currentApprovalId}/reject_leave/`;
+
+                await APIClient.post(endpoint, { approval_notes: notes });
+
+                Notification.success(`Leave ${action}d successfully`);
+                Modal.close('approvalModal');
+                loadLeaves();
+            } catch (error) {
+                Notification.error('Failed to process leave');
+            }
+        }
+
+        function viewLeaveDetails(id) {
+            const leave = myLeaves.find(l => l.id === id) || pendingLeaves.find(l => l.id === id) || allLeaves.find(l => l.id === id);
+            if (leave) {
+                alert(`Leave Request\n\nType: ${leave.leave_type}\nDates: ${formatDate(leave.start_date)} - ${formatDate(leave.end_date)}\nDuration: ${leave.duration_days} days\nReason: ${leave.reason}\nStatus: ${leave.status}`);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (AuthManager.isAuthenticated()) {
+                loadLeaves();
+                loadUserInfo();
+            }
+        });
+    </script>
+</body>
 </html>

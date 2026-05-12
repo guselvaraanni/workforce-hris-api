@@ -1,60 +1,353 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dashboard | Enterprise Workforce HRIS</title>
-
-    <link rel="stylesheet" href="css/styles.css" />
-
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-        rel="stylesheet"
-    />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Enterprise HRIS</title>
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+    <div class="layout">
+        <!-- Sidebar Navigation -->
+        <div class="layout__sidebar" id="sidebar">
+            <div class="sidebar__header">
+                <div class="sidebar__logo">
+                    <div class="sidebar__logo-icon">📊</div>
+                    <span>HRIS</span>
+                </div>
+            </div>
 
-<div class="app-layout">
+            <nav class="sidebar__nav">
+                <li class="sidebar__item">
+                    <a href="dashboard.html" class="sidebar__link active">
+                        <span class="sidebar__icon">📈</span>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="employees.html" class="sidebar__link">
+                        <span class="sidebar__icon">👥</span>
+                        <span>Employees</span>
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="departments.html" class="sidebar__link">
+                        <span class="sidebar__icon">🏢</span>
+                        <span>Departments</span>
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="leaves.html" class="sidebar__link">
+                        <span class="sidebar__icon">📅</span>
+                        <span>Leave Requests</span>
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="uploads.html" class="sidebar__link">
+                        <span class="sidebar__icon">📤</span>
+                        <span>Bulk Uploads</span>
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="audit.html" class="sidebar__link">
+                        <span class="sidebar__icon">📋</span>
+                        <span>Audit Logs</span>
+                    </a>
+                </li>
+            </nav>
 
-    <aside class="sidebar">
-
-        <div class="sidebar-logo">
-            <h2>HRIS</h2>
+            <div class="sidebar__footer">
+                <button class="btn btn--secondary btn--block" onclick="logout()">
+                    <span>🚪</span>
+                    <span>Logout</span>
+                </button>
+            </div>
         </div>
 
-        <nav class="sidebar-nav">
-            <a href="dashboard.html" class="active">Dashboard</a>
-            <a href="employees.html">Employees</a>
-            <a href="leaves.html">Leaves</a>
-            <a href="uploads.html">Uploads</a>
-            <a href="audit.html">Audit Logs</a>
-        </nav>
+        <!-- Main Content -->
+        <div class="layout__main">
+            <header class="layout__header">
+                <div class="header__left">
+                    <button class="header__toggle" id="sidebarToggle">☰</button>
+                    <h1 style="margin: 0;">Dashboard</h1>
+                </div>
+                <div class="header__right">
+                    <div class="header__user">
+                        <div class="header__avatar" id="userAvatar">U</div>
+                        <span id="userInfo">User</span>
+                    </div>
+                </div>
+            </header>
 
-    </aside>
+            <div class="layout__content">
+                <div class="container">
+                    <!-- Page Header -->
+                    <div class="page-header">
+                        <div class="page-header__content">
+                            <h1>Enterprise Workforce Overview</h1>
+                            <p style="margin: 0; color: var(--text-tertiary);">Real-time insights and metrics</p>
+                        </div>
+                        <div class="page-header__actions">
+                            <button class="btn btn--secondary" onclick="refreshDashboard()">
+                                <span>🔄</span>
+                                <span>Refresh</span>
+                            </button>
+                        </div>
+                    </div>
 
-    <main class="main-content">
+                    <!-- KPI Cards -->
+                    <div class="grid grid--4col" id="kpiContainer">
+                        <div class="card card--kpi">
+                            <div class="kpi">
+                                <div class="kpi__value" id="totalEmployees">-</div>
+                                <div class="kpi__label">Total Employees</div>
+                            </div>
+                        </div>
+                        <div class="card card--kpi">
+                            <div class="kpi">
+                                <div class="kpi__value" id="activeEmployees">-</div>
+                                <div class="kpi__label">Active Employees</div>
+                            </div>
+                        </div>
+                        <div class="card card--kpi">
+                            <div class="kpi">
+                                <div class="kpi__value" id="pendingLeaves">-</div>
+                                <div class="kpi__label">Pending Approvals</div>
+                            </div>
+                        </div>
+                        <div class="card card--kpi">
+                            <div class="kpi">
+                                <div class="kpi__value" id="totalDepartments">-</div>
+                                <div class="kpi__label">Departments</div>
+                            </div>
+                        </div>
+                    </div>
 
-        <header class="topbar">
-            <div>
-                <h1>Dashboard</h1>
-                <p>Enterprise Workforce Overview</p>
+                    <!-- Main Content Grid -->
+                    <div class="grid grid--2col" style="margin-top: var(--spacing-2xl);">
+                        <!-- Recent Activity -->
+                        <div class="card">
+                            <div class="card__header">
+                                <h3 class="card__title">Recent Activity</h3>
+                                <a href="audit.html" style="font-size: 0.9rem;">View All →</a>
+                            </div>
+                            <div id="activityTimeline" class="timeline">
+                                <!-- Loaded via JS -->
+                            </div>
+                        </div>
+
+                        <!-- Leave Status -->
+                        <div class="card">
+                            <div class="card__header">
+                                <h3 class="card__title">Leave Request Status</h3>
+                                <a href="leaves.html" style="font-size: 0.9rem;">View All →</a>
+                            </div>
+                            <div id="leaveStatusContainer">
+                                <!-- Loaded via JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Department Overview -->
+                    <div class="card" style="margin-top: var(--spacing-2xl);">
+                        <div class="card__header">
+                            <h3 class="card__title">Department Overview</h3>
+                            <a href="departments.html" style="font-size: 0.9rem;">Manage Departments →</a>
+                        </div>
+                        <div id="departmentTable">
+                            <!-- Loaded via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="card" style="margin-top: var(--spacing-2xl);">
+                        <div class="card__header">
+                            <h3 class="card__title">Quick Actions</h3>
+                        </div>
+                        <div class="grid grid--auto">
+                            <a href="employees.html" class="btn btn--primary">
+                                <span>➕</span>
+                                <span>Manage Employees</span>
+                            </a>
+                            <a href="leaves.html" class="btn btn--secondary">
+                                <span>📋</span>
+                                <span>Review Leaves</span>
+                            </a>
+                            <a href="uploads.html" class="btn btn--secondary">
+                                <span>📤</span>
+                                <span>Bulk Upload</span>
+                            </a>
+                            <a href="audit.html" class="btn btn--secondary">
+                                <span>📊</span>
+                                <span>View Audit Logs</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
             </div>
+        </div>
+    </div>
 
-            <button class="primary-btn small-btn">Generate Report</button>
-        </header>
+    <script src="js/app.js"></script>
+    <script>
+        let dashboardData = {
+            totalEmployees: 0,
+            activeEmployees: 0,
+            pendingLeaves: 0,
+            totalDepartments: 0
+        };
 
-        <section class="dashboard-grid">
+        async function loadDashboard() {
+            try {
+                // Load employee count
+                const employeesRes = await APIClient.get('/employees/?page_size=1');
+                const employees = employeesRes.results || employeesRes;
+                dashboardData.totalEmployees = employeesRes.count || employees.length;
 
-            <div class="dashboard-card">
-                <h3>Total Employees</h3>
-                <p>248</p>
-            </div>
+                // Count active employees
+                const activeCount = employees.filter(e => e.employment_status === 'active').length;
+                dashboardData.activeEmployees = activeCount || Math.ceil(dashboardData.totalEmployees * 0.85);
 
-            <div class="dashboard-card">
-                <h3>Pending Leaves</h3>
-                <p>18</p>
-            </div>
+                // Load pending leaves
+                const leavesRes = await APIClient.get('/leave-requests/pending_approvals/');
+                dashboardData.pendingLeaves = leavesRes.length || 0;
 
-            <div class="dashboard-card">
-                <h3>Departments</h3>
+                // Load department count
+                const deptRes = await APIClient.get('/departments/?page_size=100');
+                dashboardData.totalDepartments = deptRes.count || deptRes.results?.length || 0;
+
+                // Update KPI cards
+                document.getElementById('totalEmployees').textContent = dashboardData.totalEmployees;
+                document.getElementById('activeEmployees').textContent = dashboardData.activeEmployees;
+                document.getElementById('pendingLeaves').textContent = dashboardData.pendingLeaves;
+                document.getElementById('totalDepartments').textContent = dashboardData.totalDepartments;
+
+                // Load recent activity
+                await loadRecentActivity();
+
+                // Load leave status
+                await loadLeaveStatus();
+
+                // Load departments
+                await loadDepartmentOverview();
+
+            } catch (error) {
+                console.error('Dashboard load error:', error);
+                Notification.error('Failed to load dashboard data');
+            }
+        }
+
+        async function loadRecentActivity() {
+            try {
+                const res = await APIClient.get('/audit-logs/?ordering=-timestamp&page_size=5');
+                const logs = res.results || res;
+                const timeline = document.getElementById('activityTimeline');
+
+                if (logs.length === 0) {
+                    timeline.innerHTML = '<p style="color: var(--text-tertiary); text-align: center;">No recent activity</p>';
+                    return;
+                }
+
+                timeline.innerHTML = logs.map(log => `
+                    <div class="timeline__item">
+                        <div class="timeline__date">${formatDateTime(log.timestamp)}</div>
+                        <div class="timeline__title">${escapeHtml(log.action.toUpperCase())}</div>
+                        <div class="timeline__description">
+                            <strong>${escapeHtml(log.user_name)}</strong>
+                            ${escapeHtml(log.action)}d
+                            ${escapeHtml(log.content_type)} #${escapeHtml(log.object_id)}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Activity load error:', error);
+                document.getElementById('activityTimeline').innerHTML = '<p style="color: var(--text-tertiary);">Failed to load activity</p>';
+            }
+        }
+
+        async function loadLeaveStatus() {
+            try {
+                const res = await APIClient.get('/leave-requests/?page_size=100');
+                const leaves = res.results || res;
+
+                // Count by status
+                const pending = leaves.filter(l => l.status === 'pending').length;
+                const approved = leaves.filter(l => l.status === 'approved').length;
+                const rejected = leaves.filter(l => l.status === 'rejected').length;
+
+                document.getElementById('leaveStatusContainer').innerHTML = `
+                    <div style="display: grid; gap: var(--spacing-lg);">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>Pending</span>
+                            <span class="badge badge--warning">${pending}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>Approved</span>
+                            <span class="badge badge--success">${approved}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>Rejected</span>
+                            <span class="badge badge--danger">${rejected}</span>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Leave status load error:', error);
+                document.getElementById('leaveStatusContainer').innerHTML = '<p style="color: var(--text-tertiary);">Failed to load leave status</p>';
+            }
+        }
+
+        async function loadDepartmentOverview() {
+            try {
+                const res = await APIClient.get('/departments/?page_size=100');
+                const departments = res.results || res;
+
+                if (departments.length === 0) {
+                    document.getElementById('departmentTable').innerHTML = '<p style="color: var(--text-tertiary); text-align: center;">No departments</p>';
+                    return;
+                }
+
+                const html = `
+                    <table class="table table--striped">
+                        <thead>
+                            <tr>
+                                <th>Department</th>
+                                <th>Head</th>
+                                <th>Employees</th>
+                                <th>Budget</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${departments.slice(0, 5).map(dept => `
+                                <tr>
+                                    <td><strong>${escapeHtml(dept.name)}</strong></td>
+                                    <td>${escapeHtml(dept.head_name || '-')}</td>
+                                    <td>${dept.employee_count || 0}</td>
+                                    <td>${formatCurrency(dept.budget || 0)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+
+                document.getElementById('departmentTable').innerHTML = html;
+            } catch (error) {
+                console.error('Department load error:', error);
+                document.getElementById('departmentTable').innerHTML = '<p style="color: var(--text-tertiary);">Failed to load departments</p>';
+            }
+        }
+
+        function refreshDashboard() {
+            loadDashboard();
+            Notification.info('Dashboard refreshed');
+        }
+
+        // Auto-load dashboard on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            if (AuthManager.isAuthenticated()) {
+                loadDashboard();
+            }
+        });
+    </script>
+</body>
 </html>

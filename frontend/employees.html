@@ -1,80 +1,519 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Employee | Enterprise Workforce HRIS</title>
-
-    <link rel="stylesheet" href="css/styles.css" />
-
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-        rel="stylesheet"
-    />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employees - Enterprise HRIS</title>
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-
-<div class="app-layout">
-
-    <aside class="sidebar">
-        <div class="sidebar-logo">
-            <h2>HRIS</h2>
-        </div>
-
-        <nav class="sidebar-nav">
-            <a href="dashboard.html">Dashboard</a>
-            <a href="employees.html" class="active">Employees</a>
-            <a href="leaves.html">Leaves</a>
-            <a href="uploads.html">Uploads</a>
-            <a href="audit.html">Audit Logs</a>
-        </nav>
-    </aside>
-
-    <main class="main-content">
-
-        <header class="topbar">
-            <div>
-                <h1>Employee Management</h1>
-                <p>Manage workforce profiles and departments</p>
+    <div class="layout">
+        <!-- Sidebar -->
+        <div class="layout__sidebar" id="sidebar">
+            <div class="sidebar__header">
+                <div class="sidebar__logo">
+                    <div class="sidebar__logo-icon">📊</div>
+                    <span>HRIS</span>
+                </div>
             </div>
 
-            <button class="primary-btn small-btn">Add Employee</button>
-        </header>
+            <nav class="sidebar__nav">
+                <li class="sidebar__item">
+                    <a href="dashboard.html" class="sidebar__link">
+                        <span class="sidebar__icon">📈</span>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="employees.html" class="sidebar__link active">
+                        <span class="sidebar__icon">👥</span>
+                        <span>Employees</span>
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="departments.html" class="sidebar__link">
+                        <span class="sidebar__icon">🏢</span>
+                        <span>Departments</span>
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="leaves.html" class="sidebar__link">
+                        <span class="sidebar__icon">📅</span>
+                        <span>Leave Requests</span>
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="uploads.html" class="sidebar__link">
+                        <span class="sidebar__icon">📤</span>
+                        <span>Bulk Uploads</span>
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="audit.html" class="sidebar__link">
+                        <span class="sidebar__icon">📋</span>
+                        <span>Audit Logs</span>
+                    </a>
+                </li>
+            </nav>
 
-        <div class="filter-bar">
-            <input type="text" placeholder="Search employees..." />
-
-            <select>
-                <option>All Departments</option>
-                <option>Engineering</option>
-                <option>Finance</option>
-                <option>HR</option>
-            </select>
+            <div class="sidebar__footer">
+                <button class="btn btn--secondary btn--block" onclick="logout()">
+                    <span>🚪</span>
+                    <span>Logout</span>
+                </button>
+            </div>
         </div>
 
-        <section class="table-section">
+        <!-- Main Content -->
+        <div class="layout__main">
+            <header class="layout__header">
+                <div class="header__left">
+                    <button class="header__toggle" id="sidebarToggle">☰</button>
+                    <h1 style="margin: 0;">Employees</h1>
+                </div>
+                <div class="header__right">
+                    <div class="header__user">
+                        <div class="header__avatar" id="userAvatar">U</div>
+                        <span id="userInfo">User</span>
+                    </div>
+                </div>
+            </header>
 
-            <table>
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Department</th>
-                        <th>Email</th>
-                        <th>Status</th>
-                        <th>Role</th>
-                    </tr>
-                </thead>
+            <div class="layout__content">
+                <div class="container">
+                    <!-- Page Header -->
+                    <div class="page-header">
+                        <div class="page-header__content">
+                            <h1>Employee Management</h1>
+                            <p style="margin: 0; color: var(--text-tertiary);">Manage workforce profiles</p>
+                        </div>
+                        <div class="page-header__actions">
+                            <button class="btn btn--primary" onclick="openAddEmployeeModal()" data-admin-only>
+                                <span>➕</span>
+                                <span>Add Employee</span>
+                            </button>
+                        </div>
+                    </div>
 
-                <tbody id="employeeTableBody">
-                    <!-- Employee rows will be dynamically inserted here -->
-            </table>
+                    <!-- Filters -->
+                    <div class="filter-bar">
+                        <div class="filter-bar__search">
+                            <input
+                                type="text"
+                                class="form-input"
+                                id="searchInput"
+                                placeholder="Search by name, email, ID..."
+                                onkeyup="handleSearch()"
+                            >
+                        </div>
+                        <div class="filter-bar__item">
+                            <label class="filter-bar__label">Department</label>
+                            <select class="form-select" id="departmentFilter" onchange="handleFilter()">
+                                <option value="">All Departments</option>
+                            </select>
+                        </div>
+                        <div class="filter-bar__item">
+                            <label class="filter-bar__label">Status</label>
+                            <select class="form-select" id="statusFilter" onchange="handleFilter()">
+                                <option value="">All Status</option>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
+                    </div>
 
-        </section>
+                    <!-- Employees Table -->
+                    <div class="card">
+                        <div id="employeeTableContainer">
+                            <!-- Loaded via JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    </main>
+    <!-- Add/Edit Employee Modal -->
+    <div class="modal" id="employeeModal">
+        <div class="modal__overlay"></div>
+        <div class="modal__content">
+            <div class="modal__header">
+                <h2 class="modal__title" id="modalTitle">Add Employee</h2>
+                <button class="modal__close" onclick="Modal.close('employeeModal')">×</button>
+            </div>
+            <div class="modal__body">
+                <form id="employeeForm" onsubmit="handleEmployeeSubmit(event)">
+                    <!-- User Info Section -->
+                    <h4>User Information</h4>
+                    <div class="form-group">
+                        <label class="form-label required">Email</label>
+                        <input type="email" name="email" class="form-input" required>
+                    </div>
+                    <div class="grid grid--2col">
+                        <div class="form-group">
+                            <label class="form-label required">First Name</label>
+                            <input type="text" name="first_name" class="form-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label required">Last Name</label>
+                            <input type="text" name="last_name" class="form-input" required>
+                        </div>
+                    </div>
 
-</div>
+                    <div id="passwordSection">
+                        <div class="form-group">
+                            <label class="form-label required">Password</label>
+                            <input type="password" name="password" class="form-input" required>
+                        </div>
+                    </div>
 
-<script src="js/app.js"></script>
+                    <!-- Employee Profile Section -->
+                    <h4 style="margin-top: var(--spacing-xl);">Employee Profile</h4>
+                    <div class="form-group">
+                        <label class="form-label required">Employee ID</label>
+                        <input type="text" name="employee_id" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label required">Department</label>
+                        <select name="department" class="form-select" id="deptSelect" required>
+                            <option value="">Select Department</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Manager</label>
+                        <select name="manager" class="form-select" id="managerSelect">
+                            <option value="">No Manager</option>
+                        </select>
+                    </div>
+
+                    <!-- Personal Info -->
+                    <div class="grid grid--2col">
+                        <div class="form-group">
+                            <label class="form-label">Date of Birth</label>
+                            <input type="date" name="date_of_birth" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Gender</label>
+                            <select name="gender" class="form-select">
+                                <option value="">Select</option>
+                                <option value="M">Male</option>
+                                <option value="F">Female</option>
+                                <option value="O">Other</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Employment Info -->
+                    <div class="grid grid--2col">
+                        <div class="form-group">
+                            <label class="form-label required">Employment Type</label>
+                            <select name="employment_type" class="form-select" required>
+                                <option value="">Select</option>
+                                <option value="full_time">Full Time</option>
+                                <option value="part_time">Part Time</option>
+                                <option value="contract">Contract</option>
+                                <option value="temporary">Temporary</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label required">Status</label>
+                            <select name="employment_status" class="form-select" required>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                                <option value="leave">On Leave</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Compensation -->
+                    <div class="grid grid--2col">
+                        <div class="form-group">
+                            <label class="form-label required">Salary</label>
+                            <input type="number" name="salary" class="form-input" min="0" step="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Bonus</label>
+                            <input type="number" name="bonus" class="form-input" min="0" step="0.01">
+                        </div>
+                    </div>
+
+                    <!-- Dates -->
+                    <div class="form-group">
+                        <label class="form-label required">Date of Joining</label>
+                        <input type="date" name="date_of_joining" class="form-input" required>
+                    </div>
+
+                    <!-- Address -->
+                    <div class="form-group">
+                        <label class="form-label">Address</label>
+                        <input type="text" name="address" class="form-input" placeholder="Street address">
+                    </div>
+                    <div class="grid grid--3col">
+                        <div class="form-group">
+                            <label class="form-label">City</label>
+                            <input type="text" name="city" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Postal Code</label>
+                            <input type="text" name="postal_code" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Country</label>
+                            <input type="text" name="country" class="form-input">
+                        </div>
+                    </div>
+
+                    <!-- Skills -->
+                    <div class="form-group">
+                        <label class="form-label">Skills</label>
+                        <input type="text" name="skills" class="form-input" placeholder="Comma-separated skills">
+                    </div>
+                </form>
+            </div>
+            <div class="modal__footer">
+                <button class="btn btn--secondary" onclick="Modal.close('employeeModal')">Cancel</button>
+                <button class="btn btn--primary" onclick="document.getElementById('employeeForm').dispatchEvent(new Event('submit'))">Save Employee</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        let currentPage = 1;
+        let searchTerm = '';
+        let filterDept = '';
+        let filterStatus = '';
+        let allEmployees = [];
+        let allDepartments = [];
+        let editingEmployeeId = null;
+
+        async function loadEmployees() {
+            try {
+                document.getElementById('employeeTableContainer').innerHTML = '<div class="loading"><div class="spinner"></div>Loading employees...</div>';
+
+                const res = await APIClient.get('/employees/?page_size=100');
+                allEmployees = res.results || res;
+
+                // Load departments for filter
+                await loadDepartments();
+
+                displayEmployees();
+            } catch (error) {
+                console.error('Load employees error:', error);
+                Notification.error('Failed to load employees');
+                document.getElementById('employeeTableContainer').innerHTML = '<div class="error-state"><p>Failed to load employees</p></div>';
+            }
+        }
+
+        async function loadDepartments() {
+            try {
+                const res = await APIClient.get('/departments/?page_size=100');
+                allDepartments = res.results || res;
+
+                // Update filters
+                const deptSelect = document.getElementById('departmentFilter');
+                const deptOptions = allDepartments.map(d => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join('');
+                deptSelect.innerHTML = '<option value="">All Departments</option>' + deptOptions;
+
+                const deptModalSelect = document.getElementById('deptSelect');
+                const deptModalOptions = allDepartments.map(d => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join('');
+                deptModalSelect.innerHTML = '<option value="">Select Department</option>' + deptModalOptions;
+            } catch (error) {
+                console.error('Load departments error:', error);
+            }
+        }
+
+        async function loadManagers() {
+            try {
+                const res = await APIClient.get('/employees/my_team/?page_size=100');
+                const managers = res.results || res;
+                const managerSelect = document.getElementById('managerSelect');
+                const managerOptions = managers.map(m => `<option value="${m.id}">${escapeHtml(m.full_name)}</option>`).join('');
+                managerSelect.innerHTML = '<option value="">No Manager</option>' + managerOptions;
+            } catch (error) {
+                console.log('Managers load - may not be a manager role');
+            }
+        }
+
+        function displayEmployees() {
+            let filtered = allEmployees;
+
+            // Search filter
+            if (searchTerm) {
+                const term = searchTerm.toLowerCase();
+                filtered = filtered.filter(e =>
+                    e.full_name?.toLowerCase().includes(term) ||
+                    e.user?.email?.toLowerCase().includes(term) ||
+                    e.employee_id?.toLowerCase().includes(term)
+                );
+            }
+
+            // Department filter
+            if (filterDept) {
+                filtered = filtered.filter(e => e.department == filterDept);
+            }
+
+            // Status filter
+            if (filterStatus) {
+                filtered = filtered.filter(e => e.employment_status === filterStatus);
+            }
+
+            if (filtered.length === 0) {
+                document.getElementById('employeeTableContainer').innerHTML = '<div class="empty-state"><p>No employees found</p></div>';
+                return;
+            }
+
+            const html = `
+                <table class="data-table data-table--striped">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Department</th>
+                            <th>Employee ID</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${filtered.map(emp => `
+                            <tr>
+                                <td><strong>${escapeHtml(emp.full_name)}</strong></td>
+                                <td>${escapeHtml(emp.user?.email || '-')}</td>
+                                <td>${escapeHtml(emp.department_name || '-')}</td>
+                                <td><code>${escapeHtml(emp.employee_id)}</code></td>
+                                <td>${getStatusBadge(emp.employment_status)}</td>
+                                <td>
+                                    <div style="display: flex; gap: var(--spacing-sm);">
+                                        <button class="btn btn--secondary btn--small" onclick="viewEmployee(${emp.id})">View</button>
+                                        <button class="btn btn--secondary btn--small" onclick="editEmployee(${emp.id})" data-admin-only>Edit</button>
+                                        <button class="btn btn--danger btn--small" onclick="deleteEmployee(${emp.id})" data-admin-only>Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            document.getElementById('employeeTableContainer').innerHTML = html;
+
+            // Apply role-based visibility
+            loadUserInfo();
+        }
+
+        function handleSearch() {
+            searchTerm = document.getElementById('searchInput').value;
+            displayEmployees();
+        }
+
+        function handleFilter() {
+            filterDept = document.getElementById('departmentFilter').value;
+            filterStatus = document.getElementById('statusFilter').value;
+            displayEmployees();
+        }
+
+        function openAddEmployeeModal() {
+            editingEmployeeId = null;
+            document.getElementById('modalTitle').textContent = 'Add New Employee';
+            document.getElementById('passwordSection').style.display = 'block';
+            document.getElementById('employeeForm').reset();
+            FormHandler.clearErrors(document.getElementById('employeeForm'));
+            loadManagers();
+            Modal.open('employeeModal');
+        }
+
+        async function editEmployee(id) {
+            try {
+                const employee = await APIClient.get(`/employees/${id}/`);
+                editingEmployeeId = id;
+                document.getElementById('modalTitle').textContent = 'Edit Employee';
+                document.getElementById('passwordSection').style.display = 'none';
+
+                const form = document.getElementById('employeeForm');
+                form.elements['email'].value = employee.user?.email || '';
+                form.elements['first_name'].value = employee.user?.first_name || '';
+                form.elements['last_name'].value = employee.user?.last_name || '';
+                form.elements['employee_id'].value = employee.employee_id || '';
+                form.elements['department'].value = employee.department || '';
+                form.elements['manager'].value = employee.manager || '';
+                form.elements['date_of_birth'].value = employee.date_of_birth || '';
+                form.elements['gender'].value = employee.gender || '';
+                form.elements['employment_type'].value = employee.employment_type || '';
+                form.elements['employment_status'].value = employee.employment_status || '';
+                form.elements['salary'].value = employee.salary || '';
+                form.elements['bonus'].value = employee.bonus || '';
+                form.elements['date_of_joining'].value = employee.date_of_joining || '';
+                form.elements['address'].value = employee.address || '';
+                form.elements['city'].value = employee.city || '';
+                form.elements['postal_code'].value = employee.postal_code || '';
+                form.elements['country'].value = employee.country || '';
+                form.elements['skills'].value = employee.skills || '';
+
+                loadManagers();
+                FormHandler.clearErrors(form);
+                Modal.open('employeeModal');
+            } catch (error) {
+                Notification.error('Failed to load employee');
+            }
+        }
+
+        function viewEmployee(id) {
+            window.location.href = `?employee=${id}#details`;
+        }
+
+        async function handleEmployeeSubmit(e) {
+            e.preventDefault();
+
+            const form = document.getElementById('employeeForm');
+            const formData = FormHandler.getFormData(form);
+
+            // Remove empty fields
+            Object.keys(formData).forEach(key => {
+                if (!formData[key]) delete formData[key];
+            });
+
+            try {
+                if (editingEmployeeId) {
+                    // Update existing
+                    const response = await APIClient.patch(`/employees/${editingEmployeeId}/`, formData);
+                    Notification.success('Employee updated successfully');
+                } else {
+                    // Create new
+                    const response = await APIClient.post('/employees/', formData);
+                    Notification.success('Employee created successfully');
+                }
+
+                Modal.close('employeeModal');
+                loadEmployees();
+            } catch (error) {
+                console.error('Submit error:', error);
+                if (error.data && error.data.field_errors) {
+                    FormHandler.showErrors(form, error.data.field_errors);
+                } else {
+                    Notification.error(error.message || 'Failed to save employee');
+                }
+            }
+        }
+
+        async function deleteEmployee(id) {
+            if (!confirm('Are you sure you want to delete this employee?')) return;
+
+            try {
+                await APIClient.delete(`/employees/${id}/`);
+                Notification.success('Employee deleted successfully');
+                loadEmployees();
+            } catch (error) {
+                Notification.error('Failed to delete employee');
+            }
+        }
+
+        // Load on page init
+        document.addEventListener('DOMContentLoaded', () => {
+            if (AuthManager.isAuthenticated()) {
+                loadEmployees();
+            }
+        });
+    </script>
 </body>
 </html>
