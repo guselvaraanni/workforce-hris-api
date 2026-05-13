@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bulk Uploads - Enterprise HRIS</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <style>
+        .theme-toggle { position: fixed; top: 20px; right: 100px; z-index: 500; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--spacing-sm) var(--spacing-md); cursor: pointer; }
+        .upload-area { border: 2px dashed var(--border); border-radius: var(--radius-lg); padding: var(--spacing-2xl); text-align: center; margin-bottom: var(--spacing-xl); }
+        .upload-area.dragover { border-color: var(--primary); background-color: rgba(99, 102, 241, 0.05); }
+        .upload-area input { display: none; }
+        .progress { width: 100%; height: 8px; background-color: var(--bg-tertiary); border-radius: var(--radius-lg); overflow: hidden; margin: var(--spacing-md) 0; }
+        .progress-bar { height: 100%; background: linear-gradient(90deg, var(--primary), var(--primary-light)); width: 0%; transition: width 0.3s; }
+        .table { width: 100%; border-collapse: collapse; }
+        .table thead { background-color: rgba(99, 102, 241, 0.05); border-bottom: 2px solid var(--border); }
+        .table th { padding: var(--spacing-lg); text-align: left; font-weight: 600; }
+        .table td { padding: var(--spacing-lg); border-bottom: 1px solid var(--border); }
+        .badge { display: inline-block; padding: var(--spacing-xs) var(--spacing-md); border-radius: var(--radius-md); font-size: 0.85rem; font-weight: 600; }
+        .badge.pending { background-color: rgba(245, 158, 11, 0.1); color: var(--warning); }
+        .badge.completed { background-color: rgba(16, 185, 129, 0.1); color: var(--success); }
+        .badge.failed { background-color: rgba(239, 68, 68, 0.1); color: var(--danger); }
+        .btn { padding: var(--spacing-sm) var(--spacing-lg); background-color: var(--primary); color: white; border: none; border-radius: var(--radius-lg); cursor: pointer; }
+        .btn-secondary { background-color: var(--bg-tertiary); color: var(--text-primary); }
+    </style>
+</head>
+<body>
+    <button class="theme-toggle" id="themeToggle">🌙</button>
+
+    <div class="layout">
+        <div class="layout__sidebar" id="sidebar">
+            <div class="sidebar__header">
+                <div class="sidebar__logo">
+                    <div class="sidebar__logo-icon">📊</div>
+                    <span>HRIS</span>
+                </div>
+            </div>
+            <nav class="sidebar__nav">
+                <li class="sidebar__item"><a href="/dashboard/" class="sidebar__link">📈 Dashboard</a></li>
+                <li class="sidebar__item"><a href="/employees/" class="sidebar__link">👥 Employees</a></li>
+                <li class="sidebar__item"><a href="/departments/" class="sidebar__link">🏢 Departments</a></li>
+                <li class="sidebar__item"><a href="/leaves/" class="sidebar__link">📅 Leave Requests</a></li>
+                <li class="sidebar__item"><a href="/uploads/" class="sidebar__link active">📤 Bulk Uploads</a></li>
+                <li class="sidebar__item" data-admin-only><a href="/audit/" class="sidebar__link">📋 Audit Logs</a></li>
+            </nav>
+            <div class="sidebar__footer">
+                <button class="btn btn-secondary" onclick="logout()">🚪 Logout</button>
+            </div>
+        </div>
+
+        <div class="layout__main">
+            <header class="layout__header">
+                <div class="header__left">
+                    <button class="header__toggle" id="sidebarToggle">☰</button>
+                    <h1 style="margin: 0;">Bulk Uploads</h1>
+                </div>
+                <div class="header__right">
+                    <span id="userInfo">User</span>
+                </div>
+            </header>
+
+            <div class="layout__content">
+                <div class="container">
+                    <div style="margin-bottom: var(--spacing-2xl);">
+                        <h1>Bulk Employee Upload</h1>
+                        <p style="color: var(--text-tertiary);">Upload multiple employees via CSV file</p>
+                    </div>
+
+                    <div class="card">
+                        <div class="upload-area" id="uploadArea">
+                            <div style="font-size: 2rem; margin-bottom: var(--spacing-md);">📤</div>
+                            <p style="margin-bottom: var(--spacing-md);">Drag and drop your CSV file here or click to browse</p>
+                            <input type="file" id="fileInput" accept=".csv" onchange="handleFileSelect()">
+                            <button class="btn" onclick="document.getElementById('fileInput').click()">Choose File</button>
+                        </div>
+
+                        <div id="uploadProgress" style="display: none;">
+                            <h3>Upload Progress</h3>
+                            <div class="progress">
+                                <div class="progress-bar" id="progressBar"></div>
+                            </div>
+                            <p id="progressText">0%</p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Recent Uploads</h3>
+                        <div id="uploadsContainer">
+                            <p style="text-align: center; color: var(--text-tertiary);">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000/api/v1';
+        const THEME_KEY = 'hris_theme';
+        let uploads = [];
+
+        function initTheme() {
+            const theme = localStorage.getItem(THEME_KEY) || 'dark';
+            document.documentElement.setAttribute('data-theme', theme);
+            document.getElementById('themeToggle').textContent = theme === 'dark' ? '☀️' : '🌙';
+        }
+
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            const current = document.documentElement.getAttribute('data-theme') || 'dark';
+            const newTheme = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem(THEME_KEY, newTheme);
+            document.getElementById('themeToggle').textContent = newTheme === 'dark' ? '☀️' : '🌙';
+        });
+
+        async function apiRequest(endpoint, options = {}) {
+            const token = localStorage.getItem('access_token');
+            const headers = { 'Authorization': `Bearer ${token}`, ...options.headers };
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
+            if (response.status === 401) {
+                localStorage.clear();
+                window.location.href = '/';
+            }
+            return response.ok ? response.json() : null;
+        }
+
+        async function loadUploads() {
+            const data = await apiRequest('/bulk-uploads/?limit=100');
+            if (data) {
+                uploads = Array.isArray(data.results) ? data.results : (Array.isArray(data) ? data : []);
+                renderUploads(uploads);
+            }
+        }
+
+        function renderUploads(uploadList) {
+            const container = document.getElementById('uploadsContainer');
+            if (!uploadList || uploadList.length === 0) {
+                container.innerHTML = '<p style="text-align: center; padding: var(--spacing-xl);">No uploads yet</p>';
+                return;
+            }
+
+            container.innerHTML = `
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Filename</th>
+                            <th>Status</th>
+                            <th>Records</th>
+                            <th>Uploaded</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${uploadList.map(u => `
+                            <tr>
+                                <td>${u.csv_file ? u.csv_file.split('/').pop() : 'N/A'}</td>
+                                <td><span class="badge ${u.status}">${u.status}</span></td>
+                                <td>${u.processed_records}/${u.total_records || '?'}</td>
+                                <td>${new Date(u.created_at).toLocaleDateString()}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function handleFileSelect() {
+            const file = document.getElementById('fileInput').files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('csv_file', file);
+
+            document.getElementById('uploadProgress').style.display = 'block';
+
+            apiRequest('/bulk-uploads/', {
+                method: 'POST',
+                headers: {},
+                body: formData
+            }).then(() => {
+                alert('File uploaded successfully');
+                loadUploads();
+            });
+        }
+
+        function logout() {
+            if (confirm('Logout?')) {
+                localStorage.clear();
+                window.location.href = '/';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!localStorage.getItem('access_token')) window.location.href = '/';
+            document.getElementById('userInfo').textContent = localStorage.getItem('user_name') || 'User';
+            initTheme();
+            loadUploads();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Departments - Enterprise HRIS</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <style>
+        .theme-toggle { position: fixed; top: 20px; right: 100px; z-index: 500; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--spacing-sm) var(--spacing-md); cursor: pointer; font-size: 1.2rem; }
+        .filter-bar { display: flex; gap: var(--spacing-md); margin-bottom: var(--spacing-xl); }
+        .filter-bar input { flex: 1; min-width: 200px; padding: var(--spacing-md) var(--spacing-lg); background-color: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-lg); color: var(--text-primary); }
+        .table { width: 100%; border-collapse: collapse; }
+        .table thead { background-color: rgba(99, 102, 241, 0.05); border-bottom: 2px solid var(--border); }
+        .table th { padding: var(--spacing-lg); text-align: left; font-weight: 600; color: var(--text-tertiary); }
+        .table td { padding: var(--spacing-lg); border-bottom: 1px solid var(--border); }
+        .table tbody tr:hover { background-color: rgba(99, 102, 241, 0.05); }
+        .btn { padding: var(--spacing-sm) var(--spacing-lg); background-color: var(--primary); color: white; border: none; border-radius: var(--radius-lg); cursor: pointer; font-weight: 600; }
+        .btn:hover { background-color: var(--primary-dark); }
+        .btn-secondary { background-color: var(--bg-tertiary); color: var(--text-primary); }
+        .action-buttons { display: flex; gap: var(--spacing-sm); }
+        .action-buttons button { padding: var(--spacing-xs) var(--spacing-md); font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+    <button class="theme-toggle" id="themeToggle">🌙</button>
+
+    <div class="layout">
+        <div class="layout__sidebar" id="sidebar">
+            <div class="sidebar__header">
+                <div class="sidebar__logo">
+                    <div class="sidebar__logo-icon">📊</div>
+                    <span>HRIS</span>
+                </div>
+            </div>
+            <nav class="sidebar__nav">
+                <li class="sidebar__item">
+                    <a href="/dashboard/" class="sidebar__link">📈 Dashboard</a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="/employees/" class="sidebar__link">👥 Employees</a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="/departments/" class="sidebar__link active">🏢 Departments</a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="/leaves/" class="sidebar__link">📅 Leave Requests</a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="/uploads/" class="sidebar__link">📤 Bulk Uploads</a>
+                </li>
+                <li class="sidebar__item" data-admin-only>
+                    <a href="/audit/" class="sidebar__link">📋 Audit Logs</a>
+                </li>
+            </nav>
+            <div class="sidebar__footer">
+                <button class="btn btn-secondary" onclick="logout()">🚪 Logout</button>
+            </div>
+        </div>
+
+        <div class="layout__main">
+            <header class="layout__header">
+                <div class="header__left">
+                    <button class="header__toggle" id="sidebarToggle">☰</button>
+                    <h1 style="margin: 0;">Departments</h1>
+                </div>
+                <div class="header__right">
+                    <div class="header__user">
+                        <span id="userInfo">User</span>
+                    </div>
+                </div>
+            </header>
+
+            <div class="layout__content">
+                <div class="container">
+                    <div style="margin-bottom: var(--spacing-2xl);">
+                        <h1>Department Management</h1>
+                        <p style="color: var(--text-tertiary);">Manage organizational departments</p>
+                    </div>
+
+                    <div class="filter-bar">
+                        <input type="text" id="searchInput" placeholder="Search departments..." onkeyup="searchDepartments()">
+                        <button class="btn" onclick="loadDepartments()">🔄 Refresh</button>
+                    </div>
+
+                    <div class="card">
+                        <div id="departmentsContainer">
+                            <p style="text-align: center; color: var(--text-tertiary);">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const THEME_STORAGE_KEY = 'hris_theme';
+        const API_BASE_URL = 'http://localhost:8000/api/v1';
+        let departments = [];
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.getElementById('themeToggle').textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+        }
+
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            const current = document.documentElement.getAttribute('data-theme') || 'dark';
+            const newTheme = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem(THEME_STORAGE_KEY, newTheme);
+            document.getElementById('themeToggle').textContent = newTheme === 'dark' ? '☀️' : '🌙';
+        });
+
+        async function apiRequest(endpoint) {
+            const token = localStorage.getItem('access_token');
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.status === 401) {
+                localStorage.clear();
+                window.location.href = '/';
+            }
+            return response.ok ? response.json() : null;
+        }
+
+        async function loadDepartments() {
+            const data = await apiRequest('/departments/?limit=100');
+            if (data) {
+                departments = Array.isArray(data.results) ? data.results : (Array.isArray(data) ? data : []);
+                renderDepartments(departments);
+            }
+        }
+
+        function renderDepartments(depts) {
+            const container = document.getElementById('departmentsContainer');
+            if (!depts || depts.length === 0) {
+                container.innerHTML = '<p style="text-align: center; padding: var(--spacing-xl);">No departments found</p>';
+                return;
+            }
+
+            container.innerHTML = `
+                <table class="table">
+                    <thead>
+                        <tr><th>Name</th><th>Description</th><th>Created</th></tr>
+                    </thead>
+                    <tbody>
+                        ${depts.map(d => `<tr><td>${d.name}</td><td>${d.description || '-'}</td><td>${new Date(d.created_at).toLocaleDateString()}</td></tr>`).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function searchDepartments() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = departments.filter(d => d.name.toLowerCase().includes(query));
+            renderDepartments(filtered);
+        }
+
+        function logout() {
+            if (confirm('Logout?')) {
+                localStorage.clear();
+                window.location.href = '/';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!localStorage.getItem('access_token')) window.location.href = '/';
+            document.getElementById('userInfo').textContent = localStorage.getItem('user_name') || 'User';
+            initTheme();
+            loadDepartments();
+        });
+    </script>
+</body>
+</html>

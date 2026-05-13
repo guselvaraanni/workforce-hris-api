@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Enterprise HRIS</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <style>
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 100px;
+            z-index: 500;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-sm) var(--spacing-md);
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: var(--transition);
+        }
+
+        .theme-toggle:hover {
+            background-color: var(--bg-secondary);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .stat-label {
+            color: var(--text-tertiary);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid var(--bg-tertiary);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <button class="theme-toggle" id="themeToggle" title="Toggle theme">🌙</button>
+
+    <div class="layout">
+        <!-- Sidebar Navigation -->
+        <div class="layout__sidebar" id="sidebar">
+            <div class="sidebar__header">
+                <div class="sidebar__logo">
+                    <div class="sidebar__logo-icon">📊</div>
+                    <span>HRIS</span>
+                </div>
+            </div>
+
+            <nav class="sidebar__nav">
+                <li class="sidebar__item">
+                    <a href="/dashboard/" class="sidebar__link active">
+                        <span class="sidebar__icon">📈</span>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="/employees/" class="sidebar__link">
+                        <span class="sidebar__icon">👥</span>
+                        <span>Employees</span>
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="/departments/" class="sidebar__link">
+                        <span class="sidebar__icon">🏢</span>
+                        <span>Departments</span>
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="/leaves/" class="sidebar__link">
+                        <span class="sidebar__icon">📅</span>
+                        <span>Leave Requests</span>
+                    </a>
+                </li>
+                <li class="sidebar__item">
+                    <a href="/uploads/" class="sidebar__link">
+                        <span class="sidebar__icon">📤</span>
+                        <span>Bulk Uploads</span>
+                    </a>
+                </li>
+                <li class="sidebar__item" data-admin-only>
+                    <a href="/audit/" class="sidebar__link">
+                        <span class="sidebar__icon">📋</span>
+                        <span>Audit Logs</span>
+                    </a>
+                </li>
+            </nav>
+
+            <div class="sidebar__footer">
+                <button class="btn btn--secondary btn--block" onclick="logout()">
+                    <span>🚪</span>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="layout__main">
+            <header class="layout__header">
+                <div class="header__left">
+                    <button class="header__toggle" id="sidebarToggle">☰</button>
+                    <h1 style="margin: 0;">Dashboard</h1>
+                </div>
+                <div class="header__right">
+                    <div class="header__user">
+                        <div class="header__avatar" id="userAvatar">U</div>
+                        <span id="userInfo">User</span>
+                    </div>
+                </div>
+            </header>
+
+            <div class="layout__content">
+                <div class="container">
+                    <!-- Page Header -->
+                    <div class="page-header">
+                        <div class="page-header__content">
+                            <h1>Enterprise Workforce Overview</h1>
+                            <p style="margin: 0; color: var(--text-tertiary);">Real-time insights and metrics</p>
+                        </div>
+                        <div class="page-header__actions">
+                            <button class="btn btn--secondary" onclick="loadDashboardData()">
+                                <span>🔄</span>
+                                <span>Refresh</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Stats Grid -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value" id="totalEmployees">-</div>
+                            <div class="stat-label">Total Employees</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="totalDepartments">-</div>
+                            <div class="stat-label">Departments</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="pendingLeaves">-</div>
+                            <div class="stat-label">Pending Leave Requests</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="activeUsers">-</div>
+                            <div class="stat-label">Active Users</div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Employees -->
+                    <div class="card">
+                        <div class="card__header">
+                            <h3 class="card__title">Recent Employees</h3>
+                            <a href="/employees/" class="btn btn--small btn--primary">View All</a>
+                        </div>
+                        <div id="recentEmployees">
+                            <p style="text-align: center; color: var(--text-tertiary);">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Theme Management
+        const THEME_STORAGE_KEY = 'hris_theme';
+        const themeToggle = document.getElementById('themeToggle');
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateThemeIcon(savedTheme);
+        }
+
+        function updateThemeIcon(theme) {
+            themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
+        }
+
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem(THEME_STORAGE_KEY, newTheme);
+            updateThemeIcon(newTheme);
+        }
+
+        themeToggle.addEventListener('click', toggleTheme);
+        initTheme();
+
+        // API Configuration
+        const API_BASE_URL = 'http://localhost:8000/api/v1';
+
+        // Authentication Check
+        function checkAuthentication() {
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                window.location.href = '/';
+            }
+        }
+
+        // Load User Info
+        function loadUserInfo() {
+            const userName = localStorage.getItem('user_name') || 'User';
+            const userEmail = localStorage.getItem('user_email') || 'user@example.com';
+            const isHRAdmin = localStorage.getItem('is_hr_admin') === 'true';
+
+            document.getElementById('userInfo').textContent = userName;
+
+            // Show/hide admin-only elements
+            if (isHRAdmin) {
+                document.querySelectorAll('[data-admin-only]').forEach(el => {
+                    el.style.display = '';
+                });
+            } else {
+                document.querySelectorAll('[data-admin-only]').forEach(el => {
+                    el.style.display = 'none';
+                });
+            }
+        }
+
+        // API Request with Auth
+        async function apiRequest(endpoint, options = {}) {
+            const token = localStorage.getItem('access_token');
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+                ...options.headers
+            };
+
+            const config = {
+                ...options,
+                headers,
+                mode: 'cors',
+                credentials: 'include'
+            };
+
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+
+            if (response.status === 401) {
+                localStorage.clear();
+                window.location.href = '/';
+                return null;
+            }
+
+            return response.ok ? response.json() : null;
+        }
+
+        // Load Dashboard Data
+        async function loadDashboardData() {
+            try {
+                // Get employees
+                const employeesData = await apiRequest('/employees/?limit=100');
+                const totalEmployees = employeesData?.count || employeesData?.length || 0;
+                document.getElementById('totalEmployees').textContent = totalEmployees;
+
+                // Get departments
+                const deptsData = await apiRequest('/departments/?limit=100');
+                const totalDepts = deptsData?.count || deptsData?.length || 0;
+                document.getElementById('totalDepartments').textContent = totalDepts;
+
+                // Get leave requests
+                const leavesData = await apiRequest('/leave-requests/?limit=100');
+                const pendingLeaves = Array.isArray(leavesData?.results)
+                    ? leavesData.results.filter(l => l.status === 'pending').length
+                    : Array.isArray(leavesData)
+                    ? leavesData.filter(l => l.status === 'pending').length
+                    : 0;
+                document.getElementById('pendingLeaves').textContent = pendingLeaves;
+
+                document.getElementById('activeUsers').textContent = '?';
+
+                // Load recent employees
+                if (Array.isArray(employeesData?.results)) {
+                    renderRecentEmployees(employeesData.results.slice(0, 5));
+                } else if (Array.isArray(employeesData)) {
+                    renderRecentEmployees(employeesData.slice(0, 5));
+                }
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+            }
+        }
+
+        function renderRecentEmployees(employees) {
+            const container = document.getElementById('recentEmployees');
+            if (!employees || employees.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: var(--text-tertiary);">No employees found</p>';
+                return;
+            }
+
+            const html = `
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Department</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${employees.map(emp => `
+                            <tr>
+                                <td>${emp.user?.first_name || '-'} ${emp.user?.last_name || ''}</td>
+                                <td>${emp.user?.email || '-'}</td>
+                                <td>${emp.department?.name || '-'}</td>
+                                <td><span class="badge badge--success">Active</span></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            container.innerHTML = html;
+        }
+
+        function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                localStorage.clear();
+                window.location.href = '/';
+            }
+        }
+
+        // Sidebar toggle
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebar = document.getElementById('sidebar');
+
+        if (sidebarToggle && sidebar) {
+            sidebarToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('hidden');
+            });
+
+            document.addEventListener('click', (e) => {
+                const isClickInsideSidebar = sidebar?.contains(e.target);
+                const isClickOnToggle = sidebarToggle?.contains(e.target);
+
+                if (!isClickInsideSidebar && !isClickOnToggle && window.innerWidth <= 768) {
+                    sidebar?.classList.add('hidden');
+                }
+            });
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuthentication();
+            loadUserInfo();
+            loadDashboardData();
+        });
+    </script>
+</body>
+</html>
