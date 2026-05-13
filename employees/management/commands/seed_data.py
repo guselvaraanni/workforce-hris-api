@@ -59,6 +59,23 @@ class Command(BaseCommand):
             hr_admin_user.save()
             self.stdout.write('  Created HR Admin user')
         
+        # Create Manager User
+        self.stdout.write('Creating Manager user...')
+        manager_user, created = CustomUser.objects.get_or_create(
+            email='employee1@example.com',
+            defaults={
+                'username': 'manager_user',
+                'first_name': 'Manager',
+                'last_name': 'User',
+                'is_manager': True,
+                'is_active': True
+            }
+        )
+        if created:
+            manager_user.set_password('TestPass123!')
+            manager_user.save()
+            self.stdout.write('  Created Manager user')
+        
         # Create employees
         self.stdout.write(f'Creating {num_employees} employees...')
         
