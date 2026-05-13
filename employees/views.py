@@ -23,8 +23,33 @@ from .permissions import (
 )
 from .utils.csv_processor import process_csv_file
 from .utils.audit import log_action
+from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 logger = logging.getLogger(__name__)
+
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """Custom serializer to include user info in token response"""
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+
+        # Add user info to response
+        user = self.user
+        data['user_id'] = user.id
+        data['email'] = user.email
+        data['full_name'] = user.get_full_name() or user.email
+        data['is_hr_admin'] = user.is_hr_admin
+        data['is_manager'] = user.is_manager
+
+        return data
+
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    """Custom token view with CORS and user info"""
+    serializer_class = CustomTokenObtainPairSerializer
+    permission_classes = [AllowAny]
 
 
 class UserRegistrationView(generics.CreateAPIView):
