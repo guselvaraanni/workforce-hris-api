@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}Edit Profile — HRIS{% endblock %}
+{% block nav_employees %}active{% endblock %}
+{% block page_title %}Edit Profile{% endblock %}
+
+{% block topbar_actions %}
+  <a href="/employees/{{ employee.id }}/" class="btn btn-outline btn-sm">← Back to Profile</a>
+{% endblock %}
+
+{% block content %}
+<style>
+  .form-container { max-width: 900px; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  
+  .edit-header { display: flex; align-items: center; gap: 24px; padding-bottom: 32px; margin-bottom: 32px; border-bottom: 1px solid var(--border-subtle); }
+  .edit-avatar { width: 80px; height: 80px; border-radius: 16px; background: var(--primary); display: grid; place-items: center; color: #fff; font-size: 1.5rem; font-weight: 700; overflow: hidden; border: 2px solid var(--bg-app); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+  .edit-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .edit-title { font-size: 1.5rem; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+  .edit-subtitle { color: var(--text-secondary); font-size: 0.95rem; }
+
+  .form-section { margin-bottom: 32px; }
+  .form-section-title { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-tertiary); margin-bottom: 16px; }
+  
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-label { font-size: 0.85rem; font-weight: 500; color: var(--text-secondary); }
+  
+  .form-input { padding: 10px 14px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--bg-app); color: var(--text-primary); font-size: 0.95rem; font-family: inherit; transition: all 0.2s; }
+  .form-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15); background: var(--bg-surface); }
+  .form-input:disabled, .form-input[readonly] { background: rgba(0,0,0,0.05); cursor: not-allowed; opacity: 0.7; border-color: var(--border-subtle); }
+</style>
+
+<div class="form-container">
+  
+  <div class="edit-header">
+    <div class="edit-avatar">
+      {% if employee.profile_picture %}
+        <img src="{{ employee.profile_picture.url }}" alt="{{ employee.user.get_full_name }}">
+      {% else %}
+        {{ employee.user.first_name.0|upper }}{{ employee.user.last_name.0|upper }}
+      {% endif %}
+    </div>
+    <div>
+      <div class="edit-title">Edit {{ employee.user.get_full_name }}</div>
+      <div class="edit-subtitle">{{ employee.user.email }} &bull; {{ employee.employee_id }}</div>
+    </div>
+  </div>
+
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <div class="form-section">
+      <div class="form-section-title">Personal Details</div>
+      <div class="form-grid">
+        <div class="form-group"><label class="form-label">First Name</label><input type="text" name="first_name" value="{{ employee.user.first_name }}" class="form-input"></div>
+        <div class="form-group"><label class="form-label">Last Name</label><input type="text" name="last_name" value="{{ employee.user.last_name }}" class="form-input"></div>
+        <div class="form-group"><label class="form-label">Email Address</label><input type="email" name="email" value="{{ employee.user.email }}" class="form-input" {% if not can_edit_full_profile %}readonly{% endif %}></div>
+        <div class="form-group"><label class="form-label">Phone Number</label><input type="text" name="phone_number" value="{{ employee.phone_number }}" class="form-input"></div>
+        <div class="form-group"><label class="form-label">Profile Photo</label><input type="file" name="profile_picture" accept="image/*" class="form-input" style="padding: 7px 10px;"></div>
+        <div class="form-group"><label class="form-label">Date of Birth</label><input type="date" name="date_of_birth" value="{{ employee.date_of_birth }}" class="form-input"></div>
+        <div class="form-group">
+          <label class="form-label">Gender</label>
+          <select name="gender" class="form-input">
+            <option value="">— Select —</option>
+            <option value="M" {% if employee.gender == 'M' %}selected{% endif %}>Male</option>
+            <option value="F" {% if employee.gender == 'F' %}selected{% endif %}>Female</option>
+            <option value="O" {% if employee.gender == 'O' %}selected{% endif %}>Other</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <div class="form-section-title">Employment Information</div>
+      <div class="form-grid">
+        <div class="form-group"><label class="form-label">Employee ID</label><input type="text" name="employee_id" value="{{ employee.employee_id }}" class="form-input" {% if not can_edit_full_profile %}readonly{% endif %}></div>
+        <div class="form-group">
+          <label class="form-label">Department</label>
+          <select name="department" class="form-input">
+            <option value="">— No Department —</option>
+            {% for dept in departments %}
+              <option value="{{ dept.id }}" {% if employee.department and dept.id == employee.department.id %}selected{% endif %}>{{ dept.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Manager</label>
+          <select name="manager" class="form-input">
+            <option value="">— No Manager —</option>
+            {% for mgr in managers %}
+              <option value="{{ mgr.id }}" {% if employee.manager and mgr.id == employee.manager.id %}selected{% endif %}>{{ mgr.get_full_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Employment Status</label>
+          <select name="employment_status" class="form-input" {% if not can_edit_full_profile %}disabled{% endif %}>
+            {% for val,label in status_choices %}
+              <option value="{{ val }}" {% if employee.employment_status == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Employment Type</label>
+          <select name="employment_type" class="form-input" {% if not can_edit_full_profile %}disabled{% endif %}>
+            {% for val,label in type_choices %}
+              <option value="{{ val }}" {% if employee.employment_type == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Salary (Annual)</label><input type="number" name="salary" value="{{ employee.salary }}" class="form-input" {% if not can_edit_full_profile %}readonly{% endif %}></div>
+      </div>
+    </div>
+
+    <div class="form-section" style="margin-bottom: 0;">
+      <div class="form-section-title">Location & Biography</div>
+      <div class="form-grid">
+        <div class="form-group"><label class="form-label">City</label><input type="text" name="city" value="{{ employee.city }}" class="form-input"></div>
+        <div class="form-group"><label class="form-label">Country</label><input type="text" name="country" value="{{ employee.country }}" class="form-input"></div>
+        <div class="form-group" style="grid-column: 1 / -1;"><label class="form-label">Address</label><textarea name="address" class="form-input" rows="2">{{ employee.address }}</textarea></div>
+        <div class="form-group" style="grid-column: 1 / -1;"><label class="form-label">Biography</label><textarea name="bio" class="form-input" rows="3">{{ employee.bio }}</textarea></div>
+      </div>
+    </div>
+
+    <div style="border-top: 1px solid var(--border-subtle); padding-top: 24px; margin-top: 32px; display: flex; gap: 16px;">
+      <button type="submit" class="btn btn-primary" style="padding: 10px 24px;">Save Changes</button>
+      <a href="/employees/{{ employee.id }}/" class="btn btn-outline" style="padding: 10px 24px;">Discard</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,180 +1,117 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audit Logs - Enterprise HRIS</title>
-    <link rel="stylesheet" href="/static/css/styles.css">
-    <style>
-        .theme-toggle { position: fixed; top: 20px; right: 100px; z-index: 500; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--spacing-sm) var(--spacing-md); cursor: pointer; }
-        .filter-bar { display: flex; gap: var(--spacing-md); margin-bottom: var(--spacing-xl); flex-wrap: wrap; }
-        .filter-bar input { flex: 1; min-width: 200px; padding: var(--spacing-md); background-color: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-lg); color: var(--text-primary); }
-        .table { width: 100%; border-collapse: collapse; }
-        .table thead { background-color: rgba(99, 102, 241, 0.05); border-bottom: 2px solid var(--border); }
-        .table th { padding: var(--spacing-lg); text-align: left; font-weight: 600; }
-        .table td { padding: var(--spacing-lg); border-bottom: 1px solid var(--border); font-size: 0.9rem; }
-        .badge { display: inline-block; padding: var(--spacing-xs) var(--spacing-md); border-radius: var(--radius-md); font-size: 0.85rem; font-weight: 600; }
-        .badge.create { background-color: rgba(16, 185, 129, 0.1); color: var(--success); }
-        .badge.update { background-color: rgba(59, 130, 246, 0.1); color: var(--info); }
-        .badge.delete { background-color: rgba(239, 68, 68, 0.1); color: var(--danger); }
-        .badge.approve { background-color: rgba(245, 158, 11, 0.1); color: var(--warning); }
-        .btn { padding: var(--spacing-sm) var(--spacing-lg); background-color: var(--primary); color: white; border: none; border-radius: var(--radius-lg); cursor: pointer; }
-        .btn-secondary { background-color: var(--bg-tertiary); color: var(--text-primary); }
-    </style>
-</head>
-<body>
-    <button class="theme-toggle" id="themeToggle">🌙</button>
+{% extends "base.html" %}
+{% block title %}Audit Log — HRIS{% endblock %}
+{% block nav_audit %}active{% endblock %}
+{% block page_title %}Audit Log{% endblock %}
 
-    <div class="layout">
-        <div class="layout__sidebar" id="sidebar">
-            <div class="sidebar__header">
-                <div class="sidebar__logo">
-                    <div class="sidebar__logo-icon">📊</div>
-                    <span>HRIS</span>
-                </div>
-            </div>
-            <nav class="sidebar__nav">
-                <li class="sidebar__item"><a href="/dashboard/" class="sidebar__link">📈 Dashboard</a></li>
-                <li class="sidebar__item"><a href="/employees/" class="sidebar__link">👥 Employees</a></li>
-                <li class="sidebar__item"><a href="/departments/" class="sidebar__link">🏢 Departments</a></li>
-                <li class="sidebar__item"><a href="/leaves/" class="sidebar__link">📅 Leave Requests</a></li>
-                <li class="sidebar__item"><a href="/uploads/" class="sidebar__link">📤 Bulk Uploads</a></li>
-                <li class="sidebar__item" data-admin-only><a href="/audit/" class="sidebar__link active">📋 Audit Logs</a></li>
-            </nav>
-            <div class="sidebar__footer">
-                <button class="btn btn-secondary" onclick="logout()">🚪 Logout</button>
-            </div>
-        </div>
+{% block content %}
+<style>
+  .filter-bar { display: flex; gap: 12px; padding: 20px 24px; border-bottom: 1px solid var(--border-subtle); align-items: center; flex-wrap: wrap; background: rgba(0,0,0,0.02); }
+  .filter-input, .filter-select { padding: 8px 12px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--bg-app); color: var(--text-primary); font-size: 0.875rem; font-family: inherit; transition: all 0.2s; }
+  .filter-input:focus, .filter-select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2); }
+  
+  .table-wrap { width: 100%; overflow-x: auto; }
+  .data-table { width: 100%; border-collapse: collapse; text-align: left; }
+  .data-table th { padding: 14px 24px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); background: var(--bg-surface); border-bottom: 1px solid var(--border-subtle); font-weight: 600; white-space: nowrap; }
+  .data-table td { padding: 16px 24px; font-size: 0.875rem; color: var(--text-primary); border-bottom: 1px solid var(--border-subtle); vertical-align: top; }
+  .data-table tbody tr { transition: background 0.2s; }
+  .data-table tbody tr:hover { background: rgba(150, 150, 150, 0.05); }
 
-        <div class="layout__main">
-            <header class="layout__header">
-                <div class="header__left">
-                    <button class="header__toggle" id="sidebarToggle">☰</button>
-                    <h1 style="margin: 0;">Audit Logs</h1>
-                </div>
-                <div class="header__right">
-                    <span id="userInfo">User</span>
-                </div>
-            </header>
+  .badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 6px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+  .badge-success { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+  .badge-danger { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+  .badge-warning { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+  .badge-info { background: rgba(99, 102, 241, 0.1); color: var(--primary); }
 
-            <div class="layout__content">
-                <div class="container">
-                    <div style="margin-bottom: var(--spacing-2xl);">
-                        <h1>Audit Log Viewer</h1>
-                        <p style="color: var(--text-tertiary);">Track all system activities and changes</p>
-                    </div>
+  .changes-block { background: var(--bg-app); border: 1px solid var(--border-subtle); padding: 8px 12px; border-radius: 6px; font-family: monospace; font-size: 0.75rem; max-height: 100px; overflow-y: auto; }
+  
+  .pagination { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 16px 24px; border-top: 1px solid var(--border-subtle); }
+  .page-link { padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-strong); color: var(--text-primary); font-size: 0.875rem; transition: all 0.2s; }
+  .page-link:hover { border-color: var(--primary); color: var(--primary); background: rgba(99,102,241,0.05); }
+  .page-current { padding: 6px 12px; border-radius: 6px; background: var(--primary); color: #fff; font-size: 0.875rem; font-weight: 600; }
+</style>
 
-                    <div class="filter-bar">
-                        <input type="text" id="searchInput" placeholder="Search by action or user..." onkeyup="searchLogs()">
-                        <button class="btn" onclick="loadLogs()">🔄 Refresh</button>
-                    </div>
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">System Audit Log</h3>
+    <span style="font-size:0.85rem; color:var(--text-secondary);">{{ total_count }} total records</span>
+  </div>
+  
+  <form method="get" class="filter-bar">
+    <select name="action" class="filter-select">
+      <option value="">All Actions</option>
+      {% for val, label in action_choices %}
+        <option value="{{ val }}" {% if selected_action == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <select name="content_type" class="filter-select">
+      <option value="">All Types</option>
+      {% for ct in content_types %}
+        <option value="{{ ct }}" {% if selected_content_type == ct %}selected{% endif %}>{{ ct }}</option>
+      {% endfor %}
+    </select>
+    <input type="text" name="user" class="filter-input" placeholder="User email…" value="{{ request.GET.user }}">
+    <input type="date" name="date_from" class="filter-input" value="{{ request.GET.date_from }}">
+    <input type="date" name="date_to" class="filter-input" value="{{ request.GET.date_to }}">
+    <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+    <a href="/audit/" class="btn btn-outline btn-sm">Clear</a>
+  </form>
 
-                    <div class="card">
-                        <div id="logsContainer">
-                            <p style="text-align: center; color: var(--text-tertiary);">Loading...</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+  <div class="table-wrap">
+    {% if audit_logs %}
+    <table class="data-table">
+      <thead><tr><th>Timestamp</th><th>User</th><th>Action</th><th>Resource / Object</th><th>Changes</th></tr></thead>
+      <tbody>
+        {% for log in audit_logs %}
+        <tr>
+          <td style="white-space:nowrap; color:var(--text-secondary)">{{ log.timestamp|date:"M d, Y H:i:s" }}</td>
+          <td style="font-weight:500;">
+            {{ log.user.email|default:"System" }}<br>
+            <small style="color:var(--text-secondary); font-weight:400;">IP: {{ log.ip_address|default:"—" }}</small>
+          </td>
+          <td>
+            <span class="badge
+              {% if log.action == 'create' %}badge-success
+              {% elif log.action == 'delete' %}badge-danger
+              {% elif log.action in 'approve,reject' %}badge-warning
+              {% else %}badge-info{% endif %}">
+              {{ log.action }}
+            </span>
+          </td>
+          <td>
+            <div style="font-size:0.75rem; color:var(--text-secondary); text-transform:uppercase; margin-bottom:2px;">{{ log.content_type }}</div>
+            <div style="max-width:200px; white-space:normal; line-height:1.4;">{{ log.object_str|truncatechars:60 }}</div>
+          </td>
+          <td>
+            {% if log.changes %}
+              <div class="changes-block">
+                {% for k, v in log.changes.items %}
+                  <div><span style="color:var(--text-secondary)">{{ k }}:</span> {{ v|truncatechars:50 }}</div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <span style="color:var(--text-tertiary)">No changes recorded</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if is_paginated %}
+    <div class="pagination">
+      <span style="font-size:0.8rem; color:var(--text-secondary); margin-right:auto;">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_previous %}<a href="?{% if selected_action %}action={{ selected_action }}&{% endif %}{% if selected_content_type %}content_type={{ selected_content_type }}&{% endif %}page={{ page_obj.previous_page_number }}" class="page-link">&laquo; Prev</a>{% endif %}
+      <span class="page-current">{{ page_obj.number }}</span>
+      {% if page_obj.has_next %}<a href="?{% if selected_action %}action={{ selected_action }}&{% endif %}{% if selected_content_type %}content_type={{ selected_content_type }}&{% endif %}page={{ page_obj.next_page_number }}" class="page-link">Next &raquo;</a>{% endif %}
     </div>
+    {% endif %}
 
-    <script>
-        const API_BASE_URL = 'http://localhost:8000/api/v1';
-        const THEME_KEY = 'hris_theme';
-        let logs = [];
-
-        function initTheme() {
-            const theme = localStorage.getItem(THEME_KEY) || 'dark';
-            document.documentElement.setAttribute('data-theme', theme);
-            document.getElementById('themeToggle').textContent = theme === 'dark' ? '☀️' : '🌙';
-        }
-
-        document.getElementById('themeToggle').addEventListener('click', () => {
-            const current = document.documentElement.getAttribute('data-theme') || 'dark';
-            const newTheme = current === 'dark' ? 'light' : 'dark';
-            document.documentElement.setAttribute('data-theme', newTheme);
-            localStorage.setItem(THEME_KEY, newTheme);
-            document.getElementById('themeToggle').textContent = newTheme === 'dark' ? '☀️' : '🌙';
-        });
-
-        async function apiRequest(endpoint) {
-            const token = localStorage.getItem('access_token');
-            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (response.status === 401) {
-                localStorage.clear();
-                window.location.href = '/';
-            }
-            return response.ok ? response.json() : null;
-        }
-
-        async function loadLogs() {
-            const data = await apiRequest('/audit-logs/?limit=100&ordering=-timestamp');
-            if (data) {
-                logs = Array.isArray(data.results) ? data.results : (Array.isArray(data) ? data : []);
-                renderLogs(logs);
-            }
-        }
-
-        function renderLogs(logList) {
-            const container = document.getElementById('logsContainer');
-            if (!logList || logList.length === 0) {
-                container.innerHTML = '<p style="text-align: center; padding: var(--spacing-xl);">No audit logs found</p>';
-                return;
-            }
-
-            container.innerHTML = `
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Timestamp</th>
-                            <th>User</th>
-                            <th>Action</th>
-                            <th>Content Type</th>
-                            <th>Details</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${logList.map(log => `
-                            <tr>
-                                <td>${new Date(log.timestamp).toLocaleString()}</td>
-                                <td>${log.user?.email || 'System'}</td>
-                                <td><span class="badge ${log.action}">${log.action}</span></td>
-                                <td>${log.content_type || 'N/A'}</td>
-                                <td>${log.object_str || '-'}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
-        }
-
-        function searchLogs() {
-            const query = document.getElementById('searchInput').value.toLowerCase();
-            const filtered = logs.filter(log =>
-                (log.action || '').toLowerCase().includes(query) ||
-                (log.user?.email || '').toLowerCase().includes(query)
-            );
-            renderLogs(filtered);
-        }
-
-        function logout() {
-            if (confirm('Logout?')) {
-                localStorage.clear();
-                window.location.href = '/';
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            if (!localStorage.getItem('access_token')) window.location.href = '/';
-            const isHRAdmin = localStorage.getItem('is_hr_admin') === 'true';
-            if (!isHRAdmin) window.location.href = '/dashboard/';
-            document.getElementById('userInfo').textContent = localStorage.getItem('user_name') || 'User';
-            initTheme();
-            loadLogs();
-        });
-    </script>
-</body>
-</html>
+    {% else %}
+    <div style="text-align:center; padding:60px 20px;">
+      <div style="font-size:2rem; margin-bottom:12px;">🔍</div>
+      <p style="color:var(--text-secondary);">No audit records found.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

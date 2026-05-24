@@ -70,7 +70,7 @@ class DepartmentSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'updated_at']
     
     def get_employee_count(self, obj):
-        return obj.employees.filter(employment_status='active').count()
+        return getattr(obj, 'active_employee_count', obj.employees.filter(employment_status='active').count())
 
 
 class EmployeeProfileSerializer(serializers.ModelSerializer):
@@ -78,6 +78,10 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
     Serializer for EmployeeProfile model with nested user data.
     """
     user = CustomUserSerializer(read_only=True)
+    email = serializers.EmailField(source='user.email', required=False)
+    first_name = serializers.CharField(source='user.first_name', required=False)
+    last_name = serializers.CharField(source='user.last_name', required=False)
+    phone_number = serializers.CharField(source='user.phone_number', allow_blank=True, required=False)
     department_name = serializers.CharField(source='department.name', read_only=True)
     manager_name = serializers.CharField(source='manager.get_full_name', read_only=True)
     full_name = serializers.CharField(source='get_full_name', read_only=True)
@@ -85,7 +89,8 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmployeeProfile
         fields = [
-            'id', 'user', 'employee_id', 'department', 'department_name', 'manager', 
+            'id', 'user', 'email', 'first_name', 'last_name', 'phone_number',
+            'employee_id', 'department', 'department_name', 'manager', 
             'manager_name', 'date_of_birth', 'gender', 'address', 'city', 'country',
             'postal_code', 'employment_status', 'employment_type', 'salary', 'bonus',
             'date_of_joining', 'date_of_leaving', 'profile_picture', 'bio', 'skills',
@@ -98,6 +103,18 @@ class EmployeeProfileSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Salary cannot be negative.")
         return value
 
+    def update(self, instance, validated_data):
+        user_data = validated_data.pop('user', {})
+        for attr, value in user_data.items():
+            setattr(instance.user, attr, value)
+        if user_data:
+            instance.user.save()
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
+
 
 class EmployeeProfileCreateSerializer(serializers.ModelSerializer):
     """
@@ -107,13 +124,16 @@ class EmployeeProfileCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, validators=[validate_password])
     first_name = serializers.CharField()
     last_name = serializers.CharField()
+    profile_picture = serializers.ImageField(required=False, allow_null=True)
+    bio = serializers.CharField(required=False, allow_blank=True)
     
     class Meta:
         model = EmployeeProfile
         fields = [
             'email', 'password', 'first_name', 'last_name', 'employee_id', 'department',
             'manager', 'date_of_birth', 'gender', 'address', 'city', 'country',
-            'postal_code', 'employment_status', 'employment_type', 'salary', 'bonus', 'skills'
+            'postal_code', 'employment_status', 'employment_type', 'salary', 'bonus',
+            'skills', 'profile_picture', 'bio'
         ]
     
     def create(self, validated_data):
@@ -121,8 +141,8 @@ class EmployeeProfileCreateSerializer(serializers.ModelSerializer):
         password = validated_data.pop('password')
         first_name = validated_data.pop('first_name')
         last_name = validated_data.pop('last_name')
+        profile_picture = validated_data.pop('profile_picture', None)
         
-        # Create user
         user = CustomUser.objects.create_user(
             email=email,
             username=email,
@@ -131,8 +151,10 @@ class EmployeeProfileCreateSerializer(serializers.ModelSerializer):
             last_name=last_name
         )
         
-        # Create employee profile
         employee = EmployeeProfile.objects.create(user=user, **validated_data)
+        if profile_picture is not None:
+            employee.profile_picture = profile_picture
+            employee.save()
         return employee
 
 
@@ -140,6 +162,7 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
     """
     Serializer for LeaveRequest model.
     """
+    employee = serializers.PrimaryKeyRelatedField(read_only=True)
     employee_name = serializers.CharField(source='employee.get_full_name', read_only=True)
     approved_by_name = serializers.CharField(source='approved_by.get_full_name', 
                                             read_only=True)
@@ -152,35 +175,40 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
             'reason', 'status', 'approved_by', 'approved_by_name', 'approval_date',
             'approval_notes', 'duration_days', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'approved_by', 
+        read_only_fields = ['id', 'employee', 'created_at', 'updated_at', 'approved_by', 
                            'approved_by_name', 'approval_date']
     
     def validate(self, attrs):
+        request = self.context.get('request')
+        employee = attrs.get('employee')
+        if employee is None and request is not None and hasattr(request.user, 'profile'):
+            employee = request.user.profile
+
+        if employee is None:
+            raise serializers.ValidationError(
+                {'employee': 'Authenticated user must have an employee profile.'}
+            )
+
         if attrs['start_date'] > attrs['end_date']:
             raise serializers.ValidationError(
                 {'dates': 'Start date must be before end date.'}
             )
-        
-        # Check for overlapping leaves (exclude current instance if updating)
-        employee = attrs.get('employee')
-        start_date = attrs['start_date']
-        end_date = attrs['end_date']
-        
+
         overlapping = LeaveRequest.objects.filter(
             employee=employee,
-            start_date__lte=end_date,
-            end_date__gte=start_date,
+            start_date__lte=attrs['end_date'],
+            end_date__gte=attrs['start_date'],
             status__in=['pending', 'approved']
         )
-        
+
         if self.instance:
             overlapping = overlapping.exclude(id=self.instance.id)
-        
+
         if overlapping.exists():
             raise serializers.ValidationError(
                 {'dates': 'This leave period overlaps with existing leave request.'}
             )
-        
+
         return attrs
 
 

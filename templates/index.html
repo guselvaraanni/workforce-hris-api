@@ -1,63 +1,170 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <title>Enterprise HRIS - Login</title>
     <link rel="stylesheet" href="/static/css/styles.css">
     <style>
-        .login-container {
+        body {
+            min-height: 100vh;
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: radial-gradient(circle at top left, rgba(99, 102, 241, 0.18), transparent 28%),
+                        radial-gradient(circle at bottom right, rgba(59, 130, 246, 0.14), transparent 28%),
+                        linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+            color: var(--text-primary);
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
-            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
             padding: var(--spacing-lg);
         }
 
-        .login-card {
-            background-color: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-xl);
-            padding: var(--spacing-2xl);
-            max-width: 420px;
+        .login-container {
+            display: grid;
+            grid-template-columns: minmax(280px, 1.1fr) minmax(320px, 1fr);
+            gap: 2rem;
+            max-width: 1120px;
             width: 100%;
-            box-shadow: var(--shadow-xl);
         }
 
-        .login-header {
-            text-align: center;
+        .auth-hero,
+        .auth-card {
+            position: relative;
+            border-radius: var(--radius-2xl);
+            border: 1px solid var(--border);
+            background-color: rgba(15, 23, 42, 0.92);
+            box-shadow: var(--shadow-xl);
+            backdrop-filter: blur(14px);
+        }
+
+        .auth-hero {
+            padding: calc(var(--spacing-2xl) + 0.5rem);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 620px;
+            overflow: hidden;
+        }
+
+        .auth-hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.24), transparent 18%),
+                        radial-gradient(circle at 80% 80%, rgba(56, 189, 248, 0.16), transparent 16%);
+            pointer-events: none;
+        }
+
+        .auth-hero > * {
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            border-radius: 999px;
+            background: rgba(99, 102, 241, 0.14);
+            color: var(--primary);
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-bottom: var(--spacing-lg);
+            width: fit-content;
+        }
+
+        .hero-title {
+            font-size: clamp(2.4rem, 3vw, 3.4rem);
+            line-height: 1.05;
+            margin: 0 0 var(--spacing-lg);
+            color: white;
+            max-width: 14rem;
+        }
+
+        .hero-copy {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            line-height: 1.8;
+            max-width: 32rem;
             margin-bottom: var(--spacing-2xl);
         }
 
-        .login-logo {
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, var(--primary), var(--primary-light));
-            border-radius: var(--radius-lg);
+        .hero-list {
+            display: grid;
+            gap: 1.1rem;
+            margin-bottom: var(--spacing-2xl);
+        }
+
+        .hero-list-item {
             display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 2rem;
-            font-weight: bold;
-            margin: 0 auto var(--spacing-lg);
+            gap: 1rem;
+            align-items: flex-start;
+            color: var(--text-secondary);
         }
 
-        .login-title {
-            font-size: 1.875rem;
-            font-weight: 700;
+        .hero-list-icon {
+            width: 2.2rem;
+            height: 2.2rem;
+            display: grid;
+            place-items: center;
+            border-radius: 14px;
+            background: rgba(99, 102, 241, 0.16);
+            color: var(--primary);
+            font-size: 1rem;
+        }
+
+        .hero-list-item strong {
             color: var(--text-primary);
-            margin-bottom: var(--spacing-sm);
+            display: block;
+            font-weight: 700;
         }
 
-        .login-subtitle {
+        .hero-footnote {
+            margin-top: auto;
             color: var(--text-tertiary);
             font-size: 0.95rem;
         }
 
+        .auth-card {
+            padding: calc(var(--spacing-2xl) + 0.5rem);
+        }
+
+        .auth-card__header {
+            display: grid;
+            gap: 0.75rem;
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .eyebrow {
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 0.16em;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+
+        .auth-card__title {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 700;
+            line-height: 1.1;
+            color: var(--text-primary);
+        }
+
+        .auth-card__subtitle {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 1rem;
+            line-height: 1.75;
+        }
+
         .login-form {
-            margin-top: var(--spacing-2xl);
+            margin-top: var(--spacing-lg);
         }
 
         .form-group {
@@ -66,7 +173,7 @@
 
         .form-label {
             display: block;
-            margin-bottom: var(--spacing-sm);
+            margin-bottom: 0.65rem;
             font-weight: 600;
             color: var(--text-primary);
             font-size: 0.95rem;
@@ -74,13 +181,13 @@
 
         .form-input {
             width: 100%;
-            padding: var(--spacing-md) var(--spacing-lg);
+            min-height: 52px;
+            padding: 1rem 1.25rem;
             background-color: var(--bg-input);
             border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
+            border-radius: var(--radius-xl);
             color: var(--text-primary);
             font-size: 0.95rem;
-            font-family: inherit;
             transition: var(--transition);
         }
 
@@ -88,98 +195,125 @@
             outline: none;
             border-color: var(--primary);
             background-color: var(--bg-input-focus);
-            box-shadow: 0 0 0 3px var(--primary-shadow);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
         }
 
         .form-input::placeholder {
             color: var(--text-tertiary);
         }
 
-        .login-footer {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: var(--spacing-xl);
+        .password-field {
+            position: relative;
+        }
+
+        .password-toggle {
+            position: absolute;
+            top: 50%;
+            right: 1rem;
+            transform: translateY(-50%);
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-weight: 700;
             font-size: 0.9rem;
+            cursor: pointer;
+            padding: 0.35rem 0.55rem;
+            transition: var(--transition);
+        }
+
+        .password-toggle:hover {
+            color: var(--primary);
+        }
+
+        .login-body {
+            display: grid;
+            gap: var(--spacing-lg);
+        }
+
+        .login-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
         }
 
         .remember-checkbox {
             display: flex;
             align-items: center;
-            gap: var(--spacing-sm);
+            gap: 0.75rem;
             cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
         }
 
         .remember-checkbox input {
-            cursor: pointer;
+            width: 1.1rem;
+            height: 1.1rem;
             accent-color: var(--primary);
+            cursor: pointer;
         }
 
-        .login-footer a {
-            color: var(--primary);
+        .forgot-link {
+            color: var(--text-secondary);
+            font-weight: 600;
             text-decoration: none;
             transition: var(--transition);
         }
 
-        .login-footer a:hover {
-            color: var(--primary-light);
+        .forgot-link:hover {
+            color: var(--primary);
         }
 
         .login-button {
             width: 100%;
-            padding: var(--spacing-md) var(--spacing-lg);
+            padding: 1rem 1.25rem;
             background-color: var(--primary);
             color: white;
             border: none;
-            border-radius: var(--radius-lg);
-            font-weight: 600;
-            font-size: 0.95rem;
+            border-radius: calc(var(--radius-xl) * 1.1);
+            font-size: 1rem;
+            font-weight: 700;
             cursor: pointer;
-            transition: var(--transition);
-            display: flex;
-            align-items: center;
+            transition: all 0.25s ease;
+            display: inline-flex;
             justify-content: center;
-            gap: var(--spacing-md);
-            margin-top: var(--spacing-lg);
+            align-items: center;
+            gap: 0.75rem;
         }
 
         .login-button:hover {
-            background-color: var(--primary-dark);
             transform: translateY(-1px);
             box-shadow: var(--shadow-md);
-        }
-
-        .login-button:active {
-            transform: translateY(0);
+            background-color: var(--primary-dark);
         }
 
         .login-button.loading {
-            opacity: 0.7;
-            pointer-events: none;
+            opacity: 0.75;
+            cursor: progress;
         }
 
         .spinner {
             display: inline-block;
             width: 16px;
             height: 16px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.35);
             border-top-color: white;
             border-radius: 50%;
-            animation: spin 0.8s linear infinite;
+            animation: spin 0.75s linear infinite;
         }
 
         @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
+            to { transform: rotate(360deg); }
         }
 
         .alert {
-            padding: var(--spacing-lg) var(--spacing-lg);
-            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            border-radius: var(--radius-xl);
             border-left: 4px solid;
             margin-bottom: var(--spacing-lg);
             display: none;
+            font-size: 0.95rem;
         }
 
         .alert.show {
@@ -187,71 +321,106 @@
         }
 
         .alert--success {
-            background-color: rgba(16, 185, 129, 0.1);
+            background-color: rgba(16, 185, 129, 0.12);
             border-color: var(--success);
-            color: var(--success-light);
+            color: var(--success);
         }
 
         .alert--error {
-            background-color: rgba(239, 68, 68, 0.1);
+            background-color: rgba(239, 68, 68, 0.16);
             border-color: var(--danger);
-            color: var(--danger-light);
+            color: var(--danger);
         }
 
         .demo-credentials {
             margin-top: var(--spacing-2xl);
-            padding-top: var(--spacing-xl);
-            border-top: 1px solid var(--border);
-            text-align: center;
+            padding: var(--spacing-xl);
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--border);
+            background-color: var(--bg-secondary);
         }
 
         .demo-label {
-            font-size: 0.85rem;
-            color: var(--text-tertiary);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: var(--spacing-md);
             display: block;
+            margin-bottom: var(--spacing-md);
+            font-size: 0.8rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
         }
 
         .demo-buttons {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
         }
 
         .demo-btn {
-            padding: var(--spacing-sm) var(--spacing-md);
-            background-color: var(--primary-shadow);
-            border: 1px solid rgba(99, 102, 241, 0.2);
-            border-radius: var(--radius-md);
-            color: var(--primary-light);
+            padding: 0.85rem 1rem;
+            border-radius: var(--radius-xl);
+            border: 1px solid rgba(99, 102, 241, 0.16);
+            background: rgba(99, 102, 241, 0.12);
+            color: var(--text-primary);
+            font-weight: 700;
             cursor: pointer;
-            font-size: 0.85rem;
             transition: var(--transition);
-            font-weight: 600;
         }
 
         .demo-btn:hover {
-            background-color: rgba(99, 102, 241, 0.2);
-            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.18);
+        }
+
+        .demo-note {
+            color: var(--text-tertiary);
+            font-size: 0.9rem;
+            line-height: 1.6;
         }
 
         .theme-toggle {
             position: absolute;
             top: 20px;
             right: 20px;
-            background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--radius-xl);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            width: 44px;
+            height: 44px;
             cursor: pointer;
-            font-size: 1.2rem;
+            display: grid;
+            place-items: center;
             transition: var(--transition);
         }
 
         .theme-toggle:hover {
-            background-color: var(--bg-secondary);
+            background: var(--bg-secondary);
+        }
+
+        @media (max-width: 980px) {
+            .login-container {
+                grid-template-columns: 1fr;
+            }
+
+            .auth-hero,
+            .auth-card {
+                min-height: auto;
+            }
+        }
+
+        @media (max-width: 720px) {
+            body {
+                padding: var(--spacing-md);
+            }
+
+            .auth-card,
+            .auth-hero {
+                padding: 1.5rem;
+            }
+
+            .hero-title {
+                max-width: 100%;
+            }
         }
     </style>
 </head>
@@ -259,72 +428,79 @@
     <button class="theme-toggle" id="themeToggle" title="Toggle theme">🌙</button>
 
     <div class="login-container">
-        <div class="login-card">
-            <div class="login-header">
-                <div class="login-logo">📊</div>
-                <h1 class="login-title">Enterprise HRIS</h1>
-                <p class="login-subtitle">Workforce Management System</p>
+        <section class="auth-hero">
+            <span class="hero-badge">Enterprise HR</span>
+            <h1 class="hero-title">Secure payroll, leave, and people operations.</h1>
+            <p class="hero-copy">A modern HRIS platform built for small and scaling teams. Manage employees, approvals, bulk uploads, and audit visibility from one polished dashboard.</p>
+            <div class="hero-list">
+                <div class="hero-list-item">
+                    <span class="hero-list-icon">✔️</span>
+                    <div><strong>Controlled access</strong> for HR admins, managers, and employees.</div>
+                </div>
+                <div class="hero-list-item">
+                    <span class="hero-list-icon">📈</span>
+                    <div><strong>Fast insights</strong> with audit history and department analytics.</div>
+                </div>
+                <div class="hero-list-item">
+                    <span class="hero-list-icon">🔒</span>
+                    <div><strong>Secure authentication</strong> with session-based login and CSRF protection.</div>
+                </div>
+            </div>
+            <p class="hero-footnote">Login to continue with admin, manager, or employee access. Access is role-aware and only shows permitted actions.</p>
+        </section>
+
+        <article class="auth-card">
+            <div class="auth-card__header">
+                <span class="eyebrow">Sign in</span>
+                <h2 class="auth-card__title">Welcome back to HRIS</h2>
+                <p class="auth-card__subtitle">Enter your credentials to access your workforce dashboard.</p>
             </div>
 
             <div id="alert" class="alert"></div>
 
             <form class="login-form" id="loginForm">
-                <div class="form-group">
-                    <label class="form-label">Email Address</label>
-                    <input
-                        type="email"
-                        class="form-input"
-                        id="email"
-                        placeholder="hr@example.com"
-                        required
-                    >
-                </div>
+                <div class="login-body">
+                    <div class="form-group">
+                        <label class="form-label" for="email">Email address</label>
+                        <input type="email" id="email" class="form-input" placeholder="hr@example.com" required>
+                    </div>
 
-                <div class="form-group">
-                    <label class="form-label">Password</label>
-                    <input
-                        type="password"
-                        class="form-input"
-                        id="password"
-                        placeholder="••••••••"
-                        required
-                    >
-                </div>
+                    <div class="form-group password-field">
+                        <label class="form-label" for="password">Password</label>
+                        <input type="password" id="password" class="form-input" placeholder="Enter your password" required>
+                        <button type="button" class="password-toggle" id="togglePassword">Show</button>
+                    </div>
 
-                <div class="login-footer">
-                    <label class="remember-checkbox">
-                        <input type="checkbox" id="rememberMe">
-                        <span>Remember me</span>
-                    </label>
-                    <a href="#">Forgot password?</a>
-                </div>
+                    <div class="login-meta">
+                        <label class="remember-checkbox">
+                            <input type="checkbox" id="rememberMe">
+                            <span>Remember me</span>
+                        </label>
+                        <a href="#" class="forgot-link">Forgot password?</a>
+                    </div>
 
-                <button type="submit" class="login-button" id="loginBtn">
-                    <span>Sign In</span>
-                </button>
+                    <button type="submit" class="login-button" id="loginBtn">
+                        <span>Sign In</span>
+                    </button>
+                </div>
             </form>
 
             <div class="demo-credentials">
-                <span class="demo-label">Demo Credentials</span>
+                <span class="demo-label">Demo credentials</span>
                 <div class="demo-buttons">
-                    <button type="button" class="demo-btn" onclick="fillDemoHR()">
-                        HR Admin
-                    </button>
-                    <button type="button" class="demo-btn" onclick="fillDemoEmployee()">
-                        Employee
-                    </button>
+                    <button type="button" class="demo-btn" onclick="fillDemoHR()">HR Admin</button>
+                    <button type="button" class="demo-btn" onclick="fillDemoEmployee()">Employee</button>
                 </div>
-                <p style="font-size: 0.8rem; color: var(--text-tertiary); margin-top: var(--spacing-md);">
-                    Password: <strong>TestPass123!</strong>
-                </p>
+                <p class="demo-note">Use the example credentials to preview HR admin or employee dashboards. Password: <strong>TestPass123!</strong></p>
             </div>
-        </div>
+        </article>
     </div>
 
     <script>
-        // Theme Management
         const THEME_STORAGE_KEY = 'hris_theme';
         const themeToggle = document.getElementById('themeToggle');
+        const passwordInput = document.getElementById('password');
+        const togglePassword = document.getElementById('togglePassword');
 
         function initTheme() {
             const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) || 'dark';
@@ -338,27 +514,45 @@
 
         function toggleTheme() {
             const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            document.documentElement.setAttribute('data-theme', newTheme);
-            localStorage.setItem(THEME_STORAGE_KEY, newTheme);
-            updateThemeIcon(newTheme);
+            const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', nextTheme);
+            localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+            updateThemeIcon(nextTheme);
         }
 
-        themeToggle.addEventListener('click', toggleTheme);
-        initTheme();
+        function togglePasswordVisibility() {
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                togglePassword.textContent = 'Hide';
+            } else {
+                passwordInput.type = 'password';
+                togglePassword.textContent = 'Show';
+            }
+        }
 
-        // API Configuration
-        const API_BASE_URL = 'http://localhost:8000/api/v1';
-        const API_LOGIN_ENDPOINT = `${API_BASE_URL}/auth/login/`;
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+        }
 
-        // DOM Elements
+        const LOGIN_ENDPOINT = '/login/';
+        const CSRF_TOKEN = getCookie('csrftoken');
         const loginForm = document.getElementById('loginForm');
         const emailInput = document.getElementById('email');
-        const passwordInput = document.getElementById('password');
         const loginBtn = document.getElementById('loginBtn');
         const alertDiv = document.getElementById('alert');
 
-        // Demo credentials fill functions
+        function showAlert(message, type = 'error') {
+            alertDiv.className = `alert show alert--${type}`;
+            alertDiv.textContent = message;
+            window.clearTimeout(alertDiv.hideTimeout);
+            alertDiv.hideTimeout = window.setTimeout(() => {
+                alertDiv.classList.remove('show');
+            }, 5000);
+        }
+
         function fillDemoHR() {
             emailInput.value = 'hr@example.com';
             passwordInput.value = 'Hr@Admin123';
@@ -369,83 +563,682 @@
             passwordInput.value = 'TestPass123!';
         }
 
-        // Show alert message
-        function showAlert(message, type = 'error') {
-            alertDiv.className = `alert show alert--${type}`;
-            alertDiv.textContent = message;
-            setTimeout(() => {
-                alertDiv.classList.remove('show');
-            }, 5000);
-        }
-
-        // Login handler
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
             const email = emailInput.value.trim();
             const password = passwordInput.value;
+            const rememberMe = document.getElementById('rememberMe').checked;
 
             if (!email || !password) {
-                showAlert('Please fill in all fields', 'error');
+                showAlert('Please fill in all fields before signing in.', 'error');
                 return;
             }
 
-            // Disable button and show loading state
             loginBtn.classList.add('loading');
             loginBtn.innerHTML = '<span class="spinner"></span><span>Signing in...</span>';
 
             try {
-                const response = await fetch(API_LOGIN_ENDPOINT, {
+                const response = await fetch(LOGIN_ENDPOINT, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN,
                     },
-                    mode: 'cors',
                     credentials: 'include',
-                    body: JSON.stringify({
-                        email: email,
-                        password: password
-                    })
+                    body: JSON.stringify({ email, password, rememberMe }),
                 });
 
                 const data = await response.json();
-
                 if (response.ok) {
-                    // Store tokens and user info
-                    localStorage.setItem('access_token', data.access);
-                    localStorage.setItem('refresh_token', data.refresh);
-                    localStorage.setItem('user_id', data.user_id);
-                    localStorage.setItem('user_email', data.email);
-                    localStorage.setItem('user_name', data.full_name);
-                    localStorage.setItem('is_hr_admin', data.is_hr_admin);
-                    localStorage.setItem('is_manager', data.is_manager);
-
                     showAlert('Login successful! Redirecting...', 'success');
-
-                    // Redirect to dashboard
-                    setTimeout(() => {
-                        window.location.href = '/dashboard/';
-                    }, 1000);
+                    setTimeout(() => { window.location.href = '/dashboard/'; }, 500);
                 } else {
                     showAlert(data.detail || 'Invalid credentials. Please try again.', 'error');
                 }
             } catch (error) {
                 console.error('Login error:', error);
-                showAlert('Connection error. Please check if the API server is running.', 'error');
+                showAlert('Connection error. Please check the server and try again.', 'error');
             } finally {
-                // Re-enable button
                 loginBtn.classList.remove('loading');
                 loginBtn.innerHTML = '<span>Sign In</span>';
             }
         });
 
-        // Check if already logged in
-        window.addEventListener('load', () => {
-            const token = localStorage.getItem('access_token');
-            if (token) {
-                window.location.href = '/dashboard/';
+        themeToggle.addEventListener('click', toggleTheme);
+        togglePassword.addEventListener('click', togglePasswordVisibility);
+        initTheme();
+    </script>
+</body>
+</html> -->
+
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>Enterprise HRIS - Login</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* ==========================================================================
+           MODERN SAAS THEME VARIABLES
+           ========================================================================== */
+        :root, [data-theme="light"] {
+            --bg-app: #ffffff;
+            --bg-surface: #ffffff;
+            --bg-input: #f9fafb;
+            --bg-input-hover: #f3f4f6;
+            --border-subtle: #e5e7eb;
+            --border-strong: #d1d5db;
+            
+            --text-primary: #111827;
+            --text-secondary: #4b5563;
+            --text-tertiary: #9ca3af;
+            
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --primary-ring: rgba(79, 70, 229, 0.15);
+            
+            --danger: #dc2626;
+            --danger-bg: #fef2f2;
+            --success: #16a34a;
+            --success-bg: #f0fdf4;
+            
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-btn: 0 1px 2px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.05);
+        }
+
+        [data-theme="dark"] {
+            --bg-app: #0e1015;
+            --bg-surface: #16181d;
+            --bg-input: #0e1015;
+            --bg-input-hover: #1c1f26;
+            --border-subtle: #2c313d;
+            --border-strong: #3f4654;
+            
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --text-tertiary: #6b7280;
+            
+            --primary: #6366f1;
+            --primary-hover: #818cf8;
+            --primary-ring: rgba(99, 102, 241, 0.2);
+            
+            --danger: #f87171;
+            --danger-bg: rgba(220, 38, 38, 0.1);
+            --success: #4ade80;
+            --success-bg: rgba(22, 163, 74, 0.1);
+            
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+            --shadow-btn: 0 1px 2px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
+        }
+
+        /* ==========================================================================
+           RESET & BASE
+           ========================================================================== */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--bg-app);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        button { font-family: inherit; }
+        a { text-decoration: none; color: var(--primary); }
+        a:hover { color: var(--primary-hover); }
+
+        /* ==========================================================================
+           LAYOUT: SPLIT SCREEN
+           ========================================================================== */
+        .split-layout {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* LEFT: Branding Sidebar (Always Dark/Premium) */
+        .auth-sidebar {
+            flex: 1;
+            background: linear-gradient(135deg, #0f172a 0%, #020617 100%);
+            color: #ffffff;
+            padding: 4rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .auth-sidebar::after {
+            content: '';
+            position: absolute;
+            top: -20%; right: -10%;
+            width: 80%; height: 80%;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 60%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .brand-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 700;
+            font-size: 1.25rem;
+            letter-spacing: -0.02em;
+            z-index: 10;
+        }
+
+        .brand-icon {
+            width: 32px;
+            height: 32px;
+            background: #6366f1;
+            border-radius: 8px;
+            display: grid;
+            place-items: center;
+            font-size: 0.85rem;
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .hero-content {
+            z-index: 10;
+            max-width: 480px;
+        }
+
+        .hero-title {
+            font-size: 2.5rem;
+            font-weight: 600;
+            line-height: 1.2;
+            margin-bottom: 1.5rem;
+            letter-spacing: -0.03em;
+        }
+
+        .hero-features {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            color: #94a3b8;
+            font-size: 0.95rem;
+        }
+
+        .feature-icon {
+            color: #6366f1;
+            background: rgba(99, 102, 241, 0.1);
+            padding: 6px;
+            border-radius: 6px;
+        }
+
+        .hero-footer {
+            z-index: 10;
+            color: #64748b;
+            font-size: 0.85rem;
+        }
+
+        /* RIGHT: Authentication Form */
+        .auth-main {
+            width: 100%;
+            max-width: 560px;
+            background-color: var(--bg-app);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 400px;
+            padding: 2rem;
+        }
+
+        /* Theme Toggle */
+        .theme-toggle {
+            position: absolute;
+            top: 2rem;
+            right: 2rem;
+            background: transparent;
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: grid;
+            place-items: center;
+            transition: all 0.2s;
+        }
+
+        .theme-toggle:hover {
+            background: var(--bg-surface);
+            color: var(--text-primary);
+            border-color: var(--border-strong);
+        }
+
+        /* Form Header */
+        .form-header {
+            margin-bottom: 2rem;
+        }
+
+        .form-header h2 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            letter-spacing: -0.03em;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-header p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        /* Inputs */
+        .form-group {
+            margin-bottom: 1.25rem;
+            position: relative;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.65rem 0.875rem;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-strong);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.2s;
+        }
+
+        .form-input:hover {
+            background-color: var(--bg-input-hover);
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            background-color: var(--bg-app);
+            box-shadow: 0 0 0 3px var(--primary-ring);
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 32px;
+            background: none;
+            border: none;
+            color: var(--text-tertiary);
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .password-toggle:hover {
+            color: var(--text-primary);
+        }
+
+        /* Form Meta */
+        .form-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .remember-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .remember-checkbox input {
+            accent-color: var(--primary);
+            width: 1rem;
+            height: 1rem;
+            cursor: pointer;
+        }
+
+        .forgot-link {
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        /* Button */
+        .login-button {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: var(--primary);
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: var(--shadow-btn);
+        }
+
+        .login-button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .login-button.loading {
+            opacity: 0.8;
+            cursor: not-allowed;
+        }
+
+        /* Alerts */
+        .alert {
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 1.5rem;
+            display: none;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .alert.show {
+            display: flex;
+        }
+
+        .alert--success {
+            background-color: var(--success-bg);
+            color: var(--success);
+            border: 1px solid rgba(22, 163, 74, 0.2);
+        }
+
+        .alert--error {
+            background-color: var(--danger-bg);
+            color: var(--danger);
+            border: 1px solid rgba(220, 38, 38, 0.2);
+        }
+
+        /* Demo Box */
+        .demo-box {
+            margin-top: 2rem;
+            padding: 1rem;
+            border-radius: 6px;
+            background-color: var(--bg-surface);
+            border: 1px dashed var(--border-strong);
+        }
+
+        .demo-box span {
+            display: block;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-tertiary);
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+        }
+
+        .demo-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .demo-btn {
+            flex: 1;
+            padding: 0.5rem;
+            font-size: 0.85rem;
+            background: transparent;
+            border: 1px solid var(--border-strong);
+            color: var(--text-secondary);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .demo-btn:hover {
+            background: var(--bg-input);
+            color: var(--text-primary);
+            border-color: var(--text-tertiary);
+        }
+
+        /* Spinner */
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .auth-sidebar { display: none; }
+            .auth-main { max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="split-layout">
+        
+        <aside class="auth-sidebar">
+            <div class="brand-header">
+                <div class="brand-icon">H</div>
+                <span>Nexus HRMS</span>
+            </div>
+
+            <div class="hero-content">
+                <h1 class="hero-title">The operating system for your workforce.</h1>
+                <div class="hero-features">
+                    <div class="feature-item">
+                        <svg class="feature-icon" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                        Role-based access control for Admins & Employees
+                    </div>
+                    <div class="feature-item">
+                        <svg class="feature-icon" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        Detailed audit logging and activity tracking
+                    </div>
+                    <div class="feature-item">
+                        <svg class="feature-icon" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        Streamlined leave management and approvals
+                    </div>
+                </div>
+            </div>
+
+            <div class="hero-footer">
+                &copy; 2026 Enterprise HRIS Platform. Secure Login.
+            </div>
+        </aside>
+
+        <main class="auth-main">
+            <button class="theme-toggle" id="themeToggle" title="Toggle theme">🌙</button>
+
+            <div class="auth-container">
+                <div class="form-header">
+                    <h2>Sign in to your account</h2>
+                    <p>Enter your credentials to access your dashboard.</p>
+                </div>
+
+                <div id="alert" class="alert"></div>
+
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label class="form-label" for="email">Email address</label>
+                        <input type="email" id="email" class="form-input" placeholder="name@company.com" required autocomplete="username">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="password">Password</label>
+                        <input type="password" id="password" class="form-input" placeholder="••••••••" required autocomplete="current-password">
+                        <button type="button" class="password-toggle" id="togglePassword">Show</button>
+                    </div>
+
+                    <div class="form-meta">
+                        <label class="remember-checkbox">
+                            <input type="checkbox" id="rememberMe">
+                            Remember me
+                        </label>
+                        <a href="#" class="forgot-link">Forgot password?</a>
+                    </div>
+
+                    <button type="submit" class="login-button" id="loginBtn">
+                        <span>Sign In</span>
+                    </button>
+                </form>
+
+                <div class="demo-box">
+                    <span>Developer Sandbox</span>
+                    <div class="demo-actions">
+                        <button type="button" class="demo-btn" onclick="fillDemoHR()">HR Admin</button>
+                        <button type="button" class="demo-btn" onclick="fillDemoEmployee()">Employee</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const THEME_STORAGE_KEY = 'hris_theme';
+        const themeToggle = document.getElementById('themeToggle');
+        const passwordInput = document.getElementById('password');
+        const togglePassword = document.getElementById('togglePassword');
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateThemeIcon(savedTheme);
+        }
+
+        function updateThemeIcon(theme) {
+            themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
+        }
+
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+            const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', nextTheme);
+            localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+            updateThemeIcon(nextTheme);
+        }
+
+        function togglePasswordVisibility() {
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                togglePassword.textContent = 'Hide';
+            } else {
+                passwordInput.type = 'password';
+                togglePassword.textContent = 'Show';
+            }
+        }
+
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+        }
+
+        const LOGIN_ENDPOINT = '/login/';
+        const CSRF_TOKEN = getCookie('csrftoken');
+        const loginForm = document.getElementById('loginForm');
+        const emailInput = document.getElementById('email');
+        const loginBtn = document.getElementById('loginBtn');
+        const alertDiv = document.getElementById('alert');
+
+        function showAlert(message, type = 'error') {
+            alertDiv.className = `alert show alert--${type}`;
+            alertDiv.textContent = message;
+            window.clearTimeout(alertDiv.hideTimeout);
+            alertDiv.hideTimeout = window.setTimeout(() => {
+                alertDiv.classList.remove('show');
+            }, 5000);
+        }
+
+        function fillDemoHR() {
+            emailInput.value = 'hr@example.com';
+            passwordInput.value = 'Hr@Admin123';
+        }
+
+        function fillDemoEmployee() {
+            emailInput.value = 'employee1@example.com';
+            passwordInput.value = 'TestPass123!';
+        }
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = emailInput.value.trim();
+            const password = passwordInput.value;
+            const rememberMe = document.getElementById('rememberMe').checked;
+
+            if (!email || !password) {
+                showAlert('Please fill in all fields before signing in.', 'error');
+                return;
+            }
+
+            loginBtn.classList.add('loading');
+            loginBtn.innerHTML = '<span class="spinner"></span><span>Signing in...</span>';
+
+            try {
+                const response = await fetch(LOGIN_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN,
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ email, password, rememberMe }),
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    showAlert('Login successful! Redirecting...', 'success');
+                    setTimeout(() => { window.location.href = '/dashboard/'; }, 500);
+                } else {
+                    showAlert(data.detail || 'Invalid credentials. Please try again.', 'error');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showAlert('Connection error. Please check the server and try again.', 'error');
+            } finally {
+                loginBtn.classList.remove('loading');
+                loginBtn.innerHTML = '<span>Sign In</span>';
             }
         });
+
+        themeToggle.addEventListener('click', toggleTheme);
+        togglePassword.addEventListener('click', togglePasswordVisibility);
+        initTheme();
     </script>
 </body>
 </html>
+

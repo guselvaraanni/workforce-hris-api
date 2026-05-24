@@ -1,382 +1,275 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Enterprise HRIS</title>
-    <link rel="stylesheet" href="/static/css/styles.css">
-    <style>
-        .theme-toggle {
-            position: fixed;
-            top: 20px;
-            right: 100px;
-            z-index: 500;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: var(--spacing-sm) var(--spacing-md);
-            cursor: pointer;
-            font-size: 1.2rem;
-            transition: var(--transition);
-        }
+{% extends "base.html" %}
+{% block title %}Dashboard — HRIS{% endblock %}
+{% block nav_dashboard %}active{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
 
-        .theme-toggle:hover {
-            background-color: var(--bg-secondary);
-        }
+{% block topbar_actions %}
+  {% if user.is_hr_admin %}
+    <a href="/employees/add/" style="display:inline-flex;align-items:center;gap:8px;padding:8px 16px;background-color:var(--primary,#4f46e5);color:#fff;border-radius:6px;font-size:0.875rem;font-weight:500;text-decoration:none;box-shadow:0 1px 2px rgba(0,0,0,0.05);transition:all 0.2s;">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path></svg>
+      Add Employee
+    </a>
+  {% endif %}
+{% endblock %}
 
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: var(--spacing-lg);
-            margin-bottom: var(--spacing-2xl);
-        }
+{% block content %}
+<style>
+  /* Scoped styles for media queries, pseudo-classes, and complex UI elements */
+  .dash-kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; margin-bottom: 32px; }
+  .dash-kpi-card { background: var(--bg-surface, #16181d); border: 1px solid var(--border-subtle, #2c313d); border-radius: 12px; padding: 24px; transition: transform 0.2s, box-shadow 0.2s; }
+  .dash-kpi-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); border-color: var(--border-strong, #3f4654); }
+  
+  .dash-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 1024px) { .dash-grid-2 { grid-template-columns: 1fr; } }
 
-        .stat-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: var(--spacing-xl);
-            text-align: center;
-        }
+  /* Premium Card Styles */
+  .dash-panel { background: var(--bg-surface, #16181d); border: 1px solid var(--border-subtle, #2c313d); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+  .dash-panel-header { padding: 20px 24px; border-bottom: 1px solid var(--border-subtle, #2c313d); display: flex; justify-content: space-between; align-items: center; }
+  .dash-panel-title { font-size: 1.1rem; font-weight: 600; color: var(--text-primary, #f9fafb); margin: 0; }
+  .dash-panel-body { padding: 24px; flex: 1; }
 
-        .stat-value {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: var(--primary);
-            margin-bottom: var(--spacing-md);
-        }
+  /* Timeline for Audit */
+  .timeline { position: relative; padding-left: 28px; margin: 0; list-style: none; }
+  .timeline::before { content: ''; position: absolute; left: 11px; top: 8px; bottom: 0; width: 2px; background: var(--border-subtle, #2c313d); }
+  .timeline-item { position: relative; margin-bottom: 24px; }
+  .timeline-item:last-child { margin-bottom: 0; }
+  .timeline-badge { position: absolute; left: -28px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--primary, #4f46e5); border: 2px solid var(--bg-surface, #16181d); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
+  
+  /* Tables */
+  .dash-table { width: 100%; border-collapse: collapse; text-align: left; }
+  .dash-table th { padding: 12px 24px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary, #9ca3af); border-bottom: 1px solid var(--border-subtle, #2c313d); background: rgba(0,0,0,0.1); font-weight: 600; }
+  .dash-table td { padding: 16px 24px; font-size: 0.875rem; color: var(--text-primary, #f9fafb); border-bottom: 1px solid var(--border-subtle, #2c313d); }
+  .dash-table tr:last-child td { border-bottom: none; }
+  .dash-table tbody tr:hover { background: rgba(255,255,255,0.02); }
 
-        .stat-label {
-            color: var(--text-tertiary);
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
+  /* Buttons & Badges */
+  .btn-ghost { font-size: 0.875rem; font-weight: 500; color: var(--text-secondary, #9ca3af); text-decoration: none; transition: color 0.2s; }
+  .btn-ghost:hover { color: var(--primary, #4f46e5); }
+</style>
 
-        .loading-spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid var(--bg-tertiary);
-            border-top-color: var(--primary);
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
+<div class="dash-kpi-grid">
+  <div class="dash-kpi-card">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
+      <div style="font-size:0.875rem; font-weight:500; color:var(--text-secondary,#9ca3af);">Active Employees</div>
+      <div style="padding:8px; border-radius:8px; background:rgba(99,102,241,0.1); color:var(--primary,#4f46e5);">👥</div>
+    </div>
+    <div style="font-size:2.25rem; font-weight:700; color:var(--text-primary,#f9fafb); line-height:1;">{{ total_employees }}</div>
+  </div>
+  
+  <div class="dash-kpi-card">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
+      <div style="font-size:0.875rem; font-weight:500; color:var(--text-secondary,#9ca3af);">Departments</div>
+      <div style="padding:8px; border-radius:8px; background:rgba(16,185,129,0.1); color:#10b981;">🏢</div>
+    </div>
+    <div style="font-size:2.25rem; font-weight:700; color:var(--text-primary,#f9fafb); line-height:1;">{{ total_departments }}</div>
+  </div>
+  
+  <div class="dash-kpi-card">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
+      <div style="font-size:0.875rem; font-weight:500; color:var(--text-secondary,#9ca3af);">Pending Leaves</div>
+      <div style="padding:8px; border-radius:8px; background:rgba(245,158,11,0.1); color:#f59e0b;">🗓</div>
+    </div>
+    <div style="font-size:2.25rem; font-weight:700; color:var(--text-primary,#f9fafb); line-height:1;">{{ pending_leaves }}</div>
+  </div>
+  
+  <div class="dash-kpi-card">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
+      <div style="font-size:0.875rem; font-weight:500; color:var(--text-secondary,#9ca3af);">Completed Uploads</div>
+      <div style="padding:8px; border-radius:8px; background:rgba(56,189,248,0.1); color:#38bdf8;">📤</div>
+    </div>
+    <div style="font-size:2.25rem; font-weight:700; color:var(--text-primary,#f9fafb); line-height:1;">{{ recent_uploads }}</div>
+  </div>
+</div>
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-    </style>
-</head>
-<body>
-    <button class="theme-toggle" id="themeToggle" title="Toggle theme">🌙</button>
-
-    <div class="layout">
-        <!-- Sidebar Navigation -->
-        <div class="layout__sidebar" id="sidebar">
-            <div class="sidebar__header">
-                <div class="sidebar__logo">
-                    <div class="sidebar__logo-icon">📊</div>
-                    <span>HRIS</span>
-                </div>
+{% if user.is_hr_admin %}
+<div class="dash-grid-2">
+  
+  <div class="dash-panel">
+    <div class="dash-panel-header">
+      <h3 class="dash-panel-title">Headcount by Department</h3>
+      <a href="/departments/" class="btn-ghost">View All &rarr;</a>
+    </div>
+    <div class="dash-panel-body">
+      {% if dept_breakdown %}
+        {% with max_hc=dept_breakdown.0.headcount %}
+        <div style="display:flex; flex-direction:column; gap:20px;">
+          {% for dept in dept_breakdown %}
+          <div>
+            <div style="display:flex; justify-content:space-between; font-size:0.875rem; font-weight:500; color:var(--text-primary,#f9fafb); margin-bottom:8px;">
+              <span>{{ dept.name }}</span>
+              <span style="color:var(--text-secondary,#9ca3af);">{{ dept.headcount }} Employees</span>
             </div>
-
-            <nav class="sidebar__nav">
-                <li class="sidebar__item">
-                    <a href="/dashboard/" class="sidebar__link active">
-                        <span class="sidebar__icon">📈</span>
-                        <span>Dashboard</span>
-                    </a>
-                </li>
-                <li class="sidebar__item">
-                    <a href="/employees/" class="sidebar__link">
-                        <span class="sidebar__icon">👥</span>
-                        <span>Employees</span>
-                    </a>
-                </li>
-                <li class="sidebar__item">
-                    <a href="/departments/" class="sidebar__link">
-                        <span class="sidebar__icon">🏢</span>
-                        <span>Departments</span>
-                    </a>
-                </li>
-                <li class="sidebar__item">
-                    <a href="/leaves/" class="sidebar__link">
-                        <span class="sidebar__icon">📅</span>
-                        <span>Leave Requests</span>
-                    </a>
-                </li>
-                <li class="sidebar__item">
-                    <a href="/uploads/" class="sidebar__link">
-                        <span class="sidebar__icon">📤</span>
-                        <span>Bulk Uploads</span>
-                    </a>
-                </li>
-                <li class="sidebar__item" data-admin-only>
-                    <a href="/audit/" class="sidebar__link">
-                        <span class="sidebar__icon">📋</span>
-                        <span>Audit Logs</span>
-                    </a>
-                </li>
-            </nav>
-
-            <div class="sidebar__footer">
-                <button class="btn btn--secondary btn--block" onclick="logout()">
-                    <span>🚪</span>
-                    <span>Logout</span>
-                </button>
+            <div style="height:8px; background:var(--bg-app,#0e1015); border-radius:99px; overflow:hidden;">
+              <div style="height:100%; background:var(--primary,#4f46e5); border-radius:99px; width:{% if max_hc %}{% widthratio dept.headcount max_hc 100 %}%{% else %}0%{% endif %}; transition:width 1s ease-out;"></div>
             </div>
+          </div>
+          {% endfor %}
         </div>
-
-        <!-- Main Content -->
-        <div class="layout__main">
-            <header class="layout__header">
-                <div class="header__left">
-                    <button class="header__toggle" id="sidebarToggle">☰</button>
-                    <h1 style="margin: 0;">Dashboard</h1>
-                </div>
-                <div class="header__right">
-                    <div class="header__user">
-                        <div class="header__avatar" id="userAvatar">U</div>
-                        <span id="userInfo">User</span>
-                    </div>
-                </div>
-            </header>
-
-            <div class="layout__content">
-                <div class="container">
-                    <!-- Page Header -->
-                    <div class="page-header">
-                        <div class="page-header__content">
-                            <h1>Enterprise Workforce Overview</h1>
-                            <p style="margin: 0; color: var(--text-tertiary);">Real-time insights and metrics</p>
-                        </div>
-                        <div class="page-header__actions">
-                            <button class="btn btn--secondary" onclick="loadDashboardData()">
-                                <span>🔄</span>
-                                <span>Refresh</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Stats Grid -->
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-value" id="totalEmployees">-</div>
-                            <div class="stat-label">Total Employees</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value" id="totalDepartments">-</div>
-                            <div class="stat-label">Departments</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value" id="pendingLeaves">-</div>
-                            <div class="stat-label">Pending Leave Requests</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value" id="activeUsers">-</div>
-                            <div class="stat-label">Active Users</div>
-                        </div>
-                    </div>
-
-                    <!-- Recent Employees -->
-                    <div class="card">
-                        <div class="card__header">
-                            <h3 class="card__title">Recent Employees</h3>
-                            <a href="/employees/" class="btn btn--small btn--primary">View All</a>
-                        </div>
-                        <div id="recentEmployees">
-                            <p style="text-align: center; color: var(--text-tertiary);">Loading...</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        {% endwith %}
+      {% else %}
+        <div style="text-align:center; padding:40px 0; color:var(--text-secondary,#9ca3af);">
+          <div style="font-size:2rem; margin-bottom:12px;">🏢</div>
+          <p style="margin:0; font-size:0.95rem;">No active departments.</p>
         </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="dash-panel">
+    <div class="dash-panel-header">
+      <h3 class="dash-panel-title">Recent Activity</h3>
+      <a href="/audit/" class="btn-ghost">Full Log &rarr;</a>
+    </div>
+    <div class="dash-panel-body" style="overflow-y:auto; max-height:400px;">
+      {% if recent_audit %}
+        <ul class="timeline">
+          {% for log in recent_audit %}
+          <li class="timeline-item">
+            <div class="timeline-badge"></div>
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:4px;">
+              <strong style="font-size:0.875rem; color:var(--text-primary,#f9fafb);">{{ log.user.email|default:"System" }}</strong>
+              <span style="font-size:0.75rem; color:var(--text-tertiary,#6b7280);">{{ log.timestamp|timesince }} ago</span>
+            </div>
+            <div style="font-size:0.875rem; color:var(--text-secondary,#9ca3af); line-height:1.4;">
+              <span style="display:inline-block; padding:2px 8px; border-radius:4px; font-size:0.7rem; font-weight:600; text-transform:uppercase; background:rgba(99,102,241,0.1); color:var(--primary,#4f46e5); margin-right:6px;">{{ log.action }}</span>
+              {{ log.content_type }} — {{ log.object_str|truncatechars:45 }}
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div style="text-align:center; padding:40px 0; color:var(--text-secondary,#9ca3af);">
+          <div style="font-size:2rem; margin-bottom:12px;">🔍</div>
+          <p style="margin:0; font-size:0.95rem;">No recent audit activity recorded.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if user.is_hr_admin or user.is_manager %}
+  {% if my_team %}
+  <div class="dash-panel" style="margin-top: 32px;">
+    <div class="dash-panel-header">
+      <div style="display:flex; align-items:center; gap:16px;">
+        <h3 class="dash-panel-title">My Team Direct Reports</h3>
+        {% if my_team_pending_leaves %}
+          <span style="padding:4px 10px; border-radius:99px; background:rgba(245,158,11,0.1); color:#f59e0b; font-size:0.75rem; font-weight:600;">{{ my_team_pending_leaves }} Pending Leaves</span>
+        {% endif %}
+      </div>
+      <a href="/leaves/?status=pending" class="btn-ghost">Review Time Off</a>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="dash-table">
+        <thead>
+          <tr>
+            <th>Employee</th>
+            <th>Department</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for emp in my_team %}
+          <tr>
+            <td>
+              <div style="display:flex; align-items:center; gap:12px;">
+                <div style="width:32px; height:32px; border-radius:50%; background:var(--primary,#4f46e5); color:#fff; display:flex; align-items:center; justify-content:center; font-size:0.8rem; font-weight:600;">{{ emp.user.first_name.0|upper }}{{ emp.user.last_name.0|upper }}</div>
+                <div>
+                  <a href="/employees/{{ emp.id }}/" style="font-weight:500; text-decoration:none;">{{ emp.user.get_full_name }}</a>
+                  <div style="font-size:0.75rem; color:var(--text-tertiary,#6b7280);">{{ emp.employee_id }}</div>
+                </div>
+              </div>
+            </td>
+            <td>{{ emp.department.name|default:"—" }}</td>
+            <td>
+              <span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:99px; font-size:0.75rem; font-weight:500; {% if emp.employment_status == 'active' %}background:rgba(16,185,129,0.1); color:#10b981;{% else %}background:rgba(156,163,175,0.1); color:var(--text-secondary,#9ca3af);{% endif %}">
+                <span style="width:6px; height:6px; border-radius:50%; {% if emp.employment_status == 'active' %}background: #10b981; {% else %}background:var(--text-secondary,#9ca3af);{% endif %}"></span>
+                {{ emp.employment_status|title }}
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+{% endif %}
+
+{% if not user.is_hr_admin and not user.is_manager %}
+  <div class="dash-grid-2" style="margin-top:24px;">
+    
+    <div class="dash-panel">
+      <div class="dash-panel-header">
+        <h3 class="dash-panel-title">My Profile</h3>
+        <a href="/employees/{{ user_profile.id }}/" class="btn-ghost">View Full &rarr;</a>
+      </div>
+      <div class="dash-panel-body" style="display:flex; flex-direction:column; gap:20px;">
+        <div style="display:flex; align-items:center; gap:20px;">
+          <div style="width:64px; height:64px; border-radius:16px; background:linear-gradient(135deg, var(--primary,#4f46e5) 0%, #818cf8 100%); color:#fff; display:flex; align-items:center; justify-content:center; font-size:1.5rem; font-weight:700; box-shadow:0 10px 15px -3px rgba(79,70,229,0.2);">
+            {{ user_profile.user.first_name.0|upper }}{{ user_profile.user.last_name.0|upper }}
+          </div>
+          <div>
+            <div style="font-size:1.25rem; font-weight:600; color:var(--text-primary,#f9fafb);">{{ user_profile.user.get_full_name }}</div>
+            <div style="font-size:0.875rem; color:var(--text-secondary,#9ca3af);">{{ user_profile.employee_id }} &bull; {{ user_profile.department.name|default:"No Department" }}</div>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:12px;">
+           <div style="padding:16px; background:var(--bg-app,#0e1015); border-radius:8px; border:1px solid var(--border-subtle,#2c313d);">
+             <div style="font-size:0.75rem; color:var(--text-tertiary,#6b7280); text-transform:uppercase; margin-bottom:4px;">Pending Leaves</div>
+             <div style="font-size:1.5rem; font-weight:600; color:#f59e0b;">{{ leave_summary.pending }}</div>
+           </div>
+           <div style="padding:16px; background:var(--bg-app,#0e1015); border-radius:8px; border:1px solid var(--border-subtle,#2c313d);">
+             <div style="font-size:0.75rem; color:var(--text-tertiary,#6b7280); text-transform:uppercase; margin-bottom:4px;">Approved Leaves</div>
+             <div style="font-size:1.5rem; font-weight:600; color:#10b981;">{{ leave_summary.approved }}</div>
+           </div>
+        </div>
+      </div>
     </div>
 
-    <script>
-        // Theme Management
-        const THEME_STORAGE_KEY = 'hris_theme';
-        const themeToggle = document.getElementById('themeToggle');
+    <div class="dash-panel">
+      <div class="dash-panel-header">
+        <h3 class="dash-panel-title">Recent Leave Requests</h3>
+        <a href="/leaves/" class="btn-ghost">Request Time Off &rarr;</a>
+      </div>
+      <div style="overflow-x:auto;">
+        {% if recent_my_leaves %}
+        <table class="dash-table">
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Dates</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for leave in recent_my_leaves %}
+            <tr>
+              <td style="font-weight:500;">{{ leave.get_leave_type_display }}</td>
+              <td style="color:var(--text-secondary,#9ca3af);">{{ leave.start_date|date:"M d" }} — {{ leave.end_date|date:"M d" }}</td>
+              <td>
+                <span style="display:inline-block; padding:4px 10px; border-radius:6px; font-size:0.75rem; font-weight:600; 
+                  {% if leave.status == 'approved' %}background:rgba(16,185,129,0.1); color:#10b981;
+                  {% elif leave.status == 'pending' %}background:rgba(245,158,11,0.1); color:#f59e0b;
+                  {% else %}background:rgba(239,68,68,0.1); color:#ef4444;{% endif %}">
+                  {{ leave.status|title }}
+                </span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div style="text-align:center; padding:40px 0; color:var(--text-secondary,#9ca3af);">
+          <div style="font-size:2rem; margin-bottom:12px;">🏖️</div>
+          <p style="margin:0; font-size:0.95rem;">You have no recent leave requests.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    
+  </div>
+{% endif %}
 
-        function initTheme() {
-            const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) || 'dark';
-            document.documentElement.setAttribute('data-theme', savedTheme);
-            updateThemeIcon(savedTheme);
-        }
-
-        function updateThemeIcon(theme) {
-            themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
-        }
-
-        function toggleTheme() {
-            const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            document.documentElement.setAttribute('data-theme', newTheme);
-            localStorage.setItem(THEME_STORAGE_KEY, newTheme);
-            updateThemeIcon(newTheme);
-        }
-
-        themeToggle.addEventListener('click', toggleTheme);
-        initTheme();
-
-        // API Configuration
-        const API_BASE_URL = 'http://localhost:8000/api/v1';
-
-        // Authentication Check
-        function checkAuthentication() {
-            const token = localStorage.getItem('access_token');
-            if (!token) {
-                window.location.href = '/';
-            }
-        }
-
-        // Load User Info
-        function loadUserInfo() {
-            const userName = localStorage.getItem('user_name') || 'User';
-            const userEmail = localStorage.getItem('user_email') || 'user@example.com';
-            const isHRAdmin = localStorage.getItem('is_hr_admin') === 'true';
-
-            document.getElementById('userInfo').textContent = userName;
-
-            // Show/hide admin-only elements
-            if (isHRAdmin) {
-                document.querySelectorAll('[data-admin-only]').forEach(el => {
-                    el.style.display = '';
-                });
-            } else {
-                document.querySelectorAll('[data-admin-only]').forEach(el => {
-                    el.style.display = 'none';
-                });
-            }
-        }
-
-        // API Request with Auth
-        async function apiRequest(endpoint, options = {}) {
-            const token = localStorage.getItem('access_token');
-            const headers = {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
-                ...options.headers
-            };
-
-            const config = {
-                ...options,
-                headers,
-                mode: 'cors',
-                credentials: 'include'
-            };
-
-            const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-
-            if (response.status === 401) {
-                localStorage.clear();
-                window.location.href = '/';
-                return null;
-            }
-
-            return response.ok ? response.json() : null;
-        }
-
-        // Load Dashboard Data
-        async function loadDashboardData() {
-            try {
-                // Get employees
-                const employeesData = await apiRequest('/employees/?limit=100');
-                const totalEmployees = employeesData?.count || employeesData?.length || 0;
-                document.getElementById('totalEmployees').textContent = totalEmployees;
-
-                // Get departments
-                const deptsData = await apiRequest('/departments/?limit=100');
-                const totalDepts = deptsData?.count || deptsData?.length || 0;
-                document.getElementById('totalDepartments').textContent = totalDepts;
-
-                // Get leave requests
-                const leavesData = await apiRequest('/leave-requests/?limit=100');
-                const pendingLeaves = Array.isArray(leavesData?.results)
-                    ? leavesData.results.filter(l => l.status === 'pending').length
-                    : Array.isArray(leavesData)
-                    ? leavesData.filter(l => l.status === 'pending').length
-                    : 0;
-                document.getElementById('pendingLeaves').textContent = pendingLeaves;
-
-                document.getElementById('activeUsers').textContent = '?';
-
-                // Load recent employees
-                if (Array.isArray(employeesData?.results)) {
-                    renderRecentEmployees(employeesData.results.slice(0, 5));
-                } else if (Array.isArray(employeesData)) {
-                    renderRecentEmployees(employeesData.slice(0, 5));
-                }
-            } catch (error) {
-                console.error('Error loading dashboard data:', error);
-            }
-        }
-
-        function renderRecentEmployees(employees) {
-            const container = document.getElementById('recentEmployees');
-            if (!employees || employees.length === 0) {
-                container.innerHTML = '<p style="text-align: center; color: var(--text-tertiary);">No employees found</p>';
-                return;
-            }
-
-            const html = `
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Department</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${employees.map(emp => `
-                            <tr>
-                                <td>${emp.user?.first_name || '-'} ${emp.user?.last_name || ''}</td>
-                                <td>${emp.user?.email || '-'}</td>
-                                <td>${emp.department?.name || '-'}</td>
-                                <td><span class="badge badge--success">Active</span></td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
-            container.innerHTML = html;
-        }
-
-        function logout() {
-            if (confirm('Are you sure you want to logout?')) {
-                localStorage.clear();
-                window.location.href = '/';
-            }
-        }
-
-        // Sidebar toggle
-        const sidebarToggle = document.getElementById('sidebarToggle');
-        const sidebar = document.getElementById('sidebar');
-
-        if (sidebarToggle && sidebar) {
-            sidebarToggle.addEventListener('click', () => {
-                sidebar.classList.toggle('hidden');
-            });
-
-            document.addEventListener('click', (e) => {
-                const isClickInsideSidebar = sidebar?.contains(e.target);
-                const isClickOnToggle = sidebarToggle?.contains(e.target);
-
-                if (!isClickInsideSidebar && !isClickOnToggle && window.innerWidth <= 768) {
-                    sidebar?.classList.add('hidden');
-                }
-            });
-        }
-
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', () => {
-            checkAuthentication();
-            loadUserInfo();
-            loadDashboardData();
-        });
-    </script>
-</body>
-</html>
+{% endblock %}

@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block title %}Add Employee — HRIS{% endblock %}
+{% block nav_employees %}active{% endblock %}
+{% block page_title %}Add Employee{% endblock %}
+
+{% block topbar_actions %}
+  <a href="/employees/" class="btn btn-outline btn-sm">Cancel</a>
+{% endblock %}
+
+{% block content %}
+<style>
+  .form-container { max-width: 900px; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  .form-header { margin-bottom: 32px; padding-bottom: 24px; border-bottom: 1px solid var(--border-subtle); }
+  .form-header h3 { font-size: 1.5rem; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+  .form-header p { color: var(--text-secondary); font-size: 0.9rem; margin: 0; }
+  
+  .form-section { margin-bottom: 32px; }
+  .form-section-title { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-tertiary); margin-bottom: 16px; }
+  
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-label { font-size: 0.85rem; font-weight: 500; color: var(--text-secondary); }
+  .form-label.required::after { content: " *"; color: var(--danger); }
+  
+  .form-input { padding: 10px 14px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--bg-app); color: var(--text-primary); font-size: 0.95rem; font-family: inherit; transition: all 0.2s; }
+  .form-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15); background: var(--bg-surface); }
+  .form-input::placeholder { color: var(--text-tertiary); }
+  
+  .alert-banner { display: none; padding: 14px; border-radius: 8px; font-size: 0.9rem; margin-bottom: 24px; }
+  .alert-error { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: var(--danger); }
+  .alert-success { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); color: var(--success); }
+</style>
+
+<div class="form-container">
+  <div class="form-header">
+    <h3>New Employee Profile</h3>
+    <p>Create a new account and fill out employment details.</p>
+  </div>
+
+  <div id="form-error" class="alert-banner alert-error"></div>
+  <div id="form-success" class="alert-banner alert-success"></div>
+
+  <div class="form-section">
+    <div class="form-section-title">Account Details</div>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label required">First Name</label><input type="text" id="first_name" class="form-input" placeholder="e.g. Jane" required></div>
+      <div class="form-group"><label class="form-label required">Last Name</label><input type="text" id="last_name" class="form-input" placeholder="e.g. Doe" required></div>
+      <div class="form-group"><label class="form-label required">Email Address</label><input type="email" id="email" class="form-input" placeholder="jane.doe@company.com" required></div>
+      <div class="form-group"><label class="form-label">Phone Number</label><input type="text" id="phone" class="form-input" placeholder="+1 (555) 000-0000"></div>
+      <div class="form-group"><label class="form-label required">Password</label><input type="password" id="password" class="form-input" placeholder="Minimum 8 characters" required></div>
+      <div class="form-group"><label class="form-label required">Confirm Password</label><input type="password" id="password2" class="form-input" placeholder="Repeat password" required></div>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <div class="form-section-title">Employment Information</div>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label required">Employee ID</label><input type="text" id="employee_id" class="form-input" placeholder="EMP-001" required></div>
+      <div class="form-group">
+        <label class="form-label">Department</label>
+        <select id="department" class="form-input">
+          <option value="">— Select Department —</option>
+          {% for dept in departments %}
+            <option value="{{ dept.id }}">{{ dept.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Manager</label>
+        <select id="manager" class="form-input">
+          <option value="">— No Manager —</option>
+          {% for mgr in managers %}
+            <option value="{{ mgr.id }}">{{ mgr.get_full_name }} ({{ mgr.email }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label required">Employment Type</label>
+        <select id="employment_type" class="form-input">
+          {% for val, label in type_choices %}
+            <option value="{{ val }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select id="employment_status" class="form-input">
+          {% for val, label in status_choices %}
+            <option value="{{ val }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label required">Salary (Annual)</label><input type="number" id="salary" class="form-input" placeholder="60000" min="0" step="1000" required></div>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <div class="form-section-title">Personal & Location</div>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Date of Birth</label><input type="date" id="date_of_birth" class="form-input"></div>
+      <div class="form-group">
+        <label class="form-label">Gender</label>
+        <select id="gender" class="form-input">
+          <option value="M">Male</option><option value="F">Female</option><option value="O">Other</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">City</label><input type="text" id="city" class="form-input" placeholder="San Francisco"></div>
+      <div class="form-group"><label class="form-label">Country</label><input type="text" id="country" class="form-input" placeholder="United States"></div>
+      <div class="form-group" style="grid-column: 1 / -1;"><label class="form-label">Full Address</label><textarea id="address" class="form-input" rows="2" placeholder="123 Main St..."></textarea></div>
+    </div>
+  </div>
+
+  <div class="form-section" style="margin-bottom: 0;">
+    <div class="form-section-title">Profile Extras</div>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Profile Photo</label><input type="file" id="profile_picture" class="form-input" accept="image/*" style="padding: 7px 10px;"></div>
+      <div class="form-group" style="grid-column: 1 / -1;"><label class="form-label">Biography</label><textarea id="bio" class="form-input" rows="3" placeholder="Brief professional summary..."></textarea></div>
+    </div>
+  </div>
+
+  <div style="border-top: 1px solid var(--border-subtle); padding-top: 24px; margin-top: 32px; display: flex; gap: 16px;">
+    <button class="btn btn-primary" onclick="submitEmployee()" id="submit-btn" style="padding: 10px 24px;">Create Employee</button>
+    <a href="/employees/" class="btn btn-outline" style="padding: 10px 24px;">Cancel</a>
+  </div>
+</div>
+
+<script>
+const API = '/api/v1';
+
+function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+  return null;
+}
+
+async function submitEmployee() {
+  const btn = document.getElementById('submit-btn');
+  const errEl = document.getElementById('form-error');
+  const okEl = document.getElementById('form-success');
+  errEl.style.display = 'none'; okEl.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Creating…';
+
+  const csrfToken = getCookie('csrftoken');
+  const formData = new FormData();
+  formData.append('email', document.getElementById('email').value);
+  formData.append('password', document.getElementById('password').value);
+  formData.append('password2', document.getElementById('password2').value);
+  formData.append('first_name', document.getElementById('first_name').value);
+  formData.append('last_name', document.getElementById('last_name').value);
+  formData.append('phone_number', document.getElementById('phone').value);
+  formData.append('employee_id', document.getElementById('employee_id').value);
+  formData.append('department', document.getElementById('department').value || '');
+  formData.append('manager', document.getElementById('manager').value || '');
+  formData.append('employment_type', document.getElementById('employment_type').value);
+  formData.append('employment_status', document.getElementById('employment_status').value);
+  formData.append('salary', document.getElementById('salary').value);
+  formData.append('date_of_birth', document.getElementById('date_of_birth').value || '');
+  formData.append('gender', document.getElementById('gender').value);
+  formData.append('city', document.getElementById('city').value);
+  formData.append('country', document.getElementById('country').value);
+  formData.append('address', document.getElementById('address').value);
+  formData.append('bio', document.getElementById('bio').value);
+
+  const pictureInput = document.getElementById('profile_picture');
+  if (pictureInput?.files?.[0]) {
+    formData.append('profile_picture', pictureInput.files[0]);
+  }
+
+  try {
+    const response = await fetch(`${API}/employees/`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': csrfToken
+      },
+      credentials: 'include',
+      body: formData
+    });
+
+    const result = await response.json();
+    if (!response.ok) {
+      showError(errEl, result);
+      btn.disabled = false;
+      btn.textContent = 'Create Employee';
+      return;
+    }
+
+    okEl.textContent = `✓ Employee created: ${result.user.first_name} ${result.user.last_name} (${result.employee_id})`;
+    okEl.style.display = 'block';
+    setTimeout(() => window.location.href = `/employees/${result.id}/`, 1500);
+  } catch (e) {
+    errEl.textContent = `Network error: ${e.message}`;
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Create Employee';
+  }
+}
+
+function showError(el, data) {
+  if (data && typeof data === 'object') {
+    el.textContent = JSON.stringify(data);
+  } else {
+    el.textContent = data || 'An error occurred.';
+  }
+  el.style.display = 'block';
+}
+</script>
+{% endblock %}

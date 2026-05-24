@@ -37,12 +37,20 @@ class IsEmployee(permissions.BasePermission):
 
 class IsOwnEmployeeProfileOrAdmin(permissions.BasePermission):
     """
-    Permission to check if user is viewing/editing their own profile or is admin.
+    Permission to check if user is viewing/editing their own profile,
+    is the employee's direct manager, or is an HR admin.
     """
+    def has_permission(self, request, view):
+        return request.user and request.user.is_authenticated
+
     def has_object_permission(self, request, view, obj):
-        return (request.user == obj.user or 
-                request.user.is_hr_admin or 
-                request.user.is_manager)
+        if request.user.is_hr_admin:
+            return True
+        if obj.user == request.user:
+            return True
+        if request.user.is_manager and obj.manager == request.user:
+            return True
+        return False
 
 
 class CanApproveLeaves(permissions.BasePermission):

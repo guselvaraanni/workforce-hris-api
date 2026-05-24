@@ -1,179 +1,163 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leave Requests - Enterprise HRIS</title>
-    <link rel="stylesheet" href="/static/css/styles.css">
-    <style>
-        .theme-toggle { position: fixed; top: 20px; right: 100px; z-index: 500; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--spacing-sm) var(--spacing-md); cursor: pointer; }
-        .filter-bar { display: flex; gap: var(--spacing-md); margin-bottom: var(--spacing-xl); flex-wrap: wrap; }
-        .filter-bar select { padding: var(--spacing-md); background-color: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-lg); color: var(--text-primary); }
-        .table { width: 100%; border-collapse: collapse; }
-        .table thead { background-color: rgba(99, 102, 241, 0.05); border-bottom: 2px solid var(--border); }
-        .table th { padding: var(--spacing-lg); text-align: left; font-weight: 600; }
-        .table td { padding: var(--spacing-lg); border-bottom: 1px solid var(--border); }
-        .badge { display: inline-block; padding: var(--spacing-xs) var(--spacing-md); border-radius: var(--radius-md); font-size: 0.85rem; font-weight: 600; }
-        .badge.pending { background-color: rgba(245, 158, 11, 0.1); color: var(--warning); }
-        .badge.approved { background-color: rgba(16, 185, 129, 0.1); color: var(--success); }
-        .badge.rejected { background-color: rgba(239, 68, 68, 0.1); color: var(--danger); }
-        .btn { padding: var(--spacing-sm) var(--spacing-lg); background-color: var(--primary); color: white; border: none; border-radius: var(--radius-lg); cursor: pointer; font-weight: 600; }
-        .btn-secondary { background-color: var(--bg-tertiary); color: var(--text-primary); }
-    </style>
-</head>
-<body>
-    <button class="theme-toggle" id="themeToggle">🌙</button>
+{% extends "base.html" %}
+{% block title %}Leave Requests — HRIS{% endblock %}
+{% block nav_leaves %}active{% endblock %}
+{% block page_title %}Leave Requests{% endblock %}
 
-    <div class="layout">
-        <div class="layout__sidebar" id="sidebar">
-            <div class="sidebar__header">
-                <div class="sidebar__logo">
-                    <div class="sidebar__logo-icon">📊</div>
-                    <span>HRIS</span>
-                </div>
-            </div>
-            <nav class="sidebar__nav">
-                <li class="sidebar__item"><a href="/dashboard/" class="sidebar__link">📈 Dashboard</a></li>
-                <li class="sidebar__item"><a href="/employees/" class="sidebar__link">👥 Employees</a></li>
-                <li class="sidebar__item"><a href="/departments/" class="sidebar__link">🏢 Departments</a></li>
-                <li class="sidebar__item"><a href="/leaves/" class="sidebar__link active">📅 Leave Requests</a></li>
-                <li class="sidebar__item"><a href="/uploads/" class="sidebar__link">📤 Bulk Uploads</a></li>
-                <li class="sidebar__item" data-admin-only><a href="/audit/" class="sidebar__link">📋 Audit Logs</a></li>
-            </nav>
-            <div class="sidebar__footer">
-                <button class="btn btn-secondary" onclick="logout()">🚪 Logout</button>
-            </div>
-        </div>
+{% block content %}
+<style>
+  /* Base Table & Form styles */
+  .table-wrap { width: 100%; overflow-x: auto; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 12px; }
+  .data-table { width: 100%; border-collapse: collapse; text-align: left; }
+  .data-table th { padding: 14px 24px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); background: rgba(0,0,0,0.02); border-bottom: 1px solid var(--border-subtle); font-weight: 600; white-space: nowrap; }
+  .data-table td { padding: 16px 24px; font-size: 0.875rem; color: var(--text-primary); border-bottom: 1px solid var(--border-subtle); white-space: nowrap; }
+  .data-table tbody tr { transition: background 0.2s; }
+  .data-table tbody tr:hover { background: rgba(150, 150, 150, 0.05); }
 
-        <div class="layout__main">
-            <header class="layout__header">
-                <div class="header__left">
-                    <button class="header__toggle" id="sidebarToggle">☰</button>
-                    <h1 style="margin: 0;">Leave Requests</h1>
-                </div>
-                <div class="header__right">
-                    <span id="userInfo">User</span>
-                </div>
-            </header>
+  .badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; text-transform: capitalize; }
+  .badge-success { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+  .badge-warning { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+  .badge-danger { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
 
-            <div class="layout__content">
-                <div class="container">
-                    <div style="margin-bottom: var(--spacing-2xl);">
-                        <h1>Leave Request Management</h1>
-                        <p style="color: var(--text-tertiary);">Manage employee leave requests</p>
-                    </div>
+  .form-card { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  .form-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 16px; color: var(--text-primary); }
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-label { font-size: 0.8rem; font-weight: 500; color: var(--text-secondary); }
+  .form-input { padding: 8px 12px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--bg-app); color: var(--text-primary); font-family: inherit; font-size: 0.9rem; transition: border-color 0.2s; }
+  .form-input:focus { outline: none; border-color: var(--primary); }
 
-                    <div class="filter-bar">
-                        <select id="statusFilter" onchange="filterLeaves()">
-                            <option value="">All Statuses</option>
-                            <option value="pending">Pending</option>
-                            <option value="approved">Approved</option>
-                            <option value="rejected">Rejected</option>
-                        </select>
-                        <button class="btn" onclick="loadLeaves()">🔄 Refresh</button>
-                    </div>
+  .filter-bar { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; }
+</style>
 
-                    <div class="card">
-                        <div id="leavesContainer">
-                            <p style="text-align: center; color: var(--text-tertiary);">Loading...</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+<div class="form-card">
+  <div class="form-title">Request Time Off</div>
+  <form id="leaveRequestForm" class="form-grid">
+    <div class="form-group">
+      <label class="form-label">Leave Type</label>
+      <select id="leave_type" class="form-input">
+        {% for val, label in leave_type_choices %}
+          <option value="{{ val }}">{{ label }}</option>
+        {% endfor %}
+      </select>
     </div>
+    <div class="form-group">
+      <label class="form-label">Start Date</label>
+      <input type="date" id="start_date" class="form-input">
+    </div>
+    <div class="form-group">
+      <label class="form-label">End Date</label>
+      <input type="date" id="end_date" class="form-input">
+    </div>
+    <div class="form-group" style="grid-column: 1 / -1;">
+      <label class="form-label">Reason</label>
+      <textarea id="reason" class="form-input" rows="2" placeholder="Briefly explain why you are requesting leave..."></textarea>
+    </div>
+    <div style="grid-column: 1 / -1; display:flex; gap:16px; align-items:center; margin-top:8px;">
+      <button type="button" class="btn btn-primary" onclick="submitLeaveRequest()">Submit Request</button>
+      <span id="leave-request-status" style="color: var(--text-secondary); font-size: 0.875rem;"></span>
+    </div>
+  </form>
+</div>
 
-    <script>
-        const API_BASE_URL = 'http://localhost:8000/api/v1';
-        const THEME_KEY = 'hris_theme';
-        let leaves = [];
+<form method="get" class="filter-bar">
+  <select name="status" class="form-input" style="min-width: 150px;">
+    <option value="">All Statuses</option>
+    {% for val, label in status_choices %}
+      <option value="{{ val }}" {% if selected_status == val %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="btn btn-outline btn-sm">Filter</button>
+  {% if selected_status %}<a href="/leaves/" class="btn btn-outline btn-sm">Clear</a>{% endif %}
+</form>
 
-        function initTheme() {
-            const theme = localStorage.getItem(THEME_KEY) || 'dark';
-            document.documentElement.setAttribute('data-theme', theme);
-            document.getElementById('themeToggle').textContent = theme === 'dark' ? '☀️' : '🌙';
-        }
+<div class="table-wrap">
+  {% if leaves %}
+  <table class="data-table">
+    <thead><tr><th>Employee</th><th>Leave Details</th><th>Dates</th><th>Status</th><th>Approver</th></tr></thead>
+    <tbody>
+      {% for leave in leaves %}
+      <tr>
+        <td>
+          <a href="/employees/{{ leave.employee.id }}/" style="font-weight:500; color:var(--text-primary);">{{ leave.employee.user.get_full_name }}</a><br>
+          <small style="color:var(--text-secondary)">{{ leave.employee.department.name|default:"—" }}</small>
+        </td>
+        <td>
+          <div style="font-weight:500;">{{ leave.get_leave_type_display }}</div>
+          <div style="font-size:0.75rem; color:var(--text-secondary); margin-top:2px;">Requested {{ leave.created_at|timesince }} ago</div>
+        </td>
+        <td style="color:var(--text-secondary);">{{ leave.start_date|date:"M d, Y" }} &rarr; {{ leave.end_date|date:"M d, Y" }}</td>
+        <td>
+          <span class="badge {% if leave.status == 'approved' %}badge-success{% elif leave.status == 'pending' %}badge-warning{% else %}badge-danger{% endif %}">
+            {{ leave.status }}
+          </span>
+        </td>
+        <td style="font-size:0.875rem; color:var(--text-secondary);">{{ leave.approved_by.get_full_name|default:"Pending" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  
+  {% if is_paginated %}
+  <div style="padding:16px 24px; border-top: 1px solid var(--border-subtle); display:flex; justify-content:space-between; font-size:0.875rem;">
+    {% if page_obj.has_previous %}<a href="?{% if selected_status %}status={{ selected_status }}&{% endif %}page={{ page_obj.previous_page_number }}" class="btn btn-outline btn-sm">&laquo; Prev</a>{% endif %}
+    <span style="color:var(--text-secondary);">Page {{ page_obj.number }}</span>
+    {% if page_obj.has_next %}<a href="?{% if selected_status %}status={{ selected_status }}&{% endif %}page={{ page_obj.next_page_number }}" class="btn btn-outline btn-sm">Next &raquo;</a>{% endif %}
+  </div>
+  {% endif %}
 
-        document.getElementById('themeToggle').addEventListener('click', () => {
-            const current = document.documentElement.getAttribute('data-theme') || 'dark';
-            const newTheme = current === 'dark' ? 'light' : 'dark';
-            document.documentElement.setAttribute('data-theme', newTheme);
-            localStorage.setItem(THEME_KEY, newTheme);
-            document.getElementById('themeToggle').textContent = newTheme === 'dark' ? '☀️' : '🌙';
-        });
+  {% else %}
+  <div style="text-align:center; padding:60px 20px;">
+    <div style="font-size:2.5rem; margin-bottom:12px;">🏖️</div>
+    <p style="color:var(--text-secondary); font-size:0.95rem;">No leave requests found.</p>
+  </div>
+  {% endif %}
+</div>
 
-        async function apiRequest(endpoint) {
-            const token = localStorage.getItem('access_token');
-            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (response.status === 401) {
-                localStorage.clear();
-                window.location.href = '/';
-            }
-            return response.ok ? response.json() : null;
-        }
+<script>
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+  }
 
-        async function loadLeaves() {
-            const data = await apiRequest('/leave-requests/?limit=100');
-            if (data) {
-                leaves = Array.isArray(data.results) ? data.results : (Array.isArray(data) ? data : []);
-                renderLeaves(leaves);
-            }
-        }
+  async function submitLeaveRequest() {
+    const statusEl = document.getElementById('leave-request-status');
+    statusEl.textContent = 'Submitting…';
 
-        function renderLeaves(leaveList) {
-            const container = document.getElementById('leavesContainer');
-            if (!leaveList || leaveList.length === 0) {
-                container.innerHTML = '<p style="text-align: center; padding: var(--spacing-xl);">No leave requests found</p>';
-                return;
-            }
+    const payload = {
+      leave_type: document.getElementById('leave_type').value,
+      start_date: document.getElementById('start_date').value,
+      end_date: document.getElementById('end_date').value,
+      reason: document.getElementById('reason').value,
+    };
 
-            container.innerHTML = `
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Employee</th>
-                            <th>Type</th>
-                            <th>Start Date</th>
-                            <th>End Date</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${leaveList.map(l => `
-                            <tr>
-                                <td>${l.employee?.user?.first_name || '-'}</td>
-                                <td>${l.leave_type || '-'}</td>
-                                <td>${new Date(l.start_date).toLocaleDateString()}</td>
-                                <td>${new Date(l.end_date).toLocaleDateString()}</td>
-                                <td><span class="badge ${l.status}">${l.status}</span></td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
-        }
+    if (!payload.start_date || !payload.end_date || !payload.reason) {
+      statusEl.textContent = 'Please complete all request fields.';
+      return;
+    }
 
-        function filterLeaves() {
-            const status = document.getElementById('statusFilter').value;
-            const filtered = status ? leaves.filter(l => l.status === status) : leaves;
-            renderLeaves(filtered);
-        }
-
-        function logout() {
-            if (confirm('Logout?')) {
-                localStorage.clear();
-                window.location.href = '/';
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            if (!localStorage.getItem('access_token')) window.location.href = '/';
-            document.getElementById('userInfo').textContent = localStorage.getItem('user_name') || 'User';
-            initTheme();
-            loadLeaves();
-        });
-    </script>
-</body>
-</html>
+    try {
+      const response = await fetch('/api/v1/leave-requests/', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        statusEl.textContent = result.detail || JSON.stringify(result);
+        return;
+      }
+      statusEl.textContent = 'Leave request submitted. Refreshing…';
+      setTimeout(() => location.reload(), 1200);
+    } catch (error) {
+      statusEl.textContent = 'Unable to submit request. Please try again.';
+      console.error(error);
+    }
+  }
+</script>
+{% endblock %}

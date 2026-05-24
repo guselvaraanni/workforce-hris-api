@@ -34,6 +34,10 @@ class CustomUser(AbstractUser):
     def __str__(self):
         return f"{self.get_full_name()} ({self.email})"
 
+    @property
+    def has_profile(self):
+        return hasattr(self, 'profile')
+
 
 class Department(models.Model):
     """
@@ -277,6 +281,12 @@ class BulkUploadJob(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     
     thread_id = models.CharField(max_length=100, blank=True, help_text='ID of processing thread')
+
+    @property
+    def progress_percentage(self):
+        if not self.total_records:
+            return 0
+        return int((self.processed_records / self.total_records) * 100)
     
     class Meta:
         verbose_name = 'Bulk Upload Job'
