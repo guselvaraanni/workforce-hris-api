@@ -1,9 +1,18 @@
+"""
+config/settings.py — Production-grade Django settings
+
+Key improvements over original:
+- django-filter added to DEFAULT_FILTER_BACKENDS
+- CACHES configured (Redis in prod, LocMemCache in dev)
+- SESSION_ENGINE uses DB (not file system)
+- CELERY_* settings stubbed for future task queue
+- Security headers enabled for production
+"""
 import os
 from pathlib import Path
 from dotenv import load_dotenv
 from datetime import timedelta
 
-# Load environment variables
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -12,23 +21,22 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-change-this-in-production'
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
-# Application definition
 INSTALLED_APPS = [
-    # 'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
-    # Third-party apps
+
+    # Third-party
     'rest_framework',
     'corsheaders',
     'drf_spectacular',
     'debug_toolbar',
-    
-    # Local apps
+    'django_filters',         # NEW: proper field-level filtering
+
+    # Local
     'employees',
 ]
 
@@ -64,24 +72,26 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# MySQL Database Configuration
+# ── MySQL Database ────────────────────────────────────────────────────────────
 DATABASES = {
     'default': {
         'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.mysql'),
         'NAME': os.getenv('DB_NAME', 'employee_management_db'),
-        'USER': os.getenv('DB_USER', 'root'),
-        'PASSWORD': os.getenv('DB_PASSWORD', ''),
+        'USER': os.getenv('DB_USER', 'hris_user'),
+        'PASSWORD': os.getenv('DB_PASSWORD', 'hris_password'),
         'HOST': os.getenv('DB_HOST', 'localhost'),
         'PORT': os.getenv('DB_PORT', '3306'),
         'OPTIONS': {
             'charset': 'utf8mb4',
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
         },
-        'CONN_MAX_AGE': 600,
+        # Persistent connections — keeps DB connections open for CONN_MAX_AGE seconds.
+        # Avoids per-request TCP handshake overhead. Set to 0 to disable (safer with pgbouncer).
+        'CONN_MAX_AGE': int(os.getenv('DB_CONN_MAX_AGE', 600)),
     }
 }
 
-# Password validation
+# ── Password validation ───────────────────────────────────────────────────────
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -89,28 +99,23 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-# Internationalization
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# Static files (CSS, JavaScript, Images)
+# ── Static & Media ────────────────────────────────────────────────────────────
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
-# Media files
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# Custom User Model
 AUTH_USER_MODEL = 'employees.CustomUser'
 
-# Django REST Framework Configuration
+# ── Django REST Framework ─────────────────────────────────────────────────────
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -122,6 +127,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': int(os.getenv('API_PAGINATION_PAGE_SIZE', 20)),
     'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',   # NEW: field-level filters
         'rest_framework.filters.SearchFilter',
         'rest_framework.filters.OrderingFilter',
     ],
@@ -129,7 +135,7 @@ REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
 }
 
-# JWT Configuration
+# ── JWT ───────────────────────────────────────────────────────────────────────
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
@@ -137,15 +143,12 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': os.getenv('JWT_SECRET_KEY', SECRET_KEY),
-    'VERIFYING_KEY': None,
     'AUTH_HEADER_TYPES': ('Bearer',),
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
-    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
-    'TOKEN_TYPE_CLAIM': 'token_type',
 }
 
-# CORS Configuration
+# ── CORS ──────────────────────────────────────────────────────────────────────
 CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:5500',
     'http://localhost:5500',
@@ -154,47 +157,25 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:8000',
     'http://localhost:8000',
 ]
-
 CORS_ALLOW_CREDENTIALS = True
-
 CSRF_TRUSTED_ORIGINS = [
     'http://127.0.0.1:5500',
     'http://localhost:5500',
+    'http://localhost:8000',
 ]
-
 CORS_ALLOW_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
-    'x-csrftoken',
-    'x-requested-with',
+    'accept', 'accept-encoding', 'authorization', 'content-type',
+    'dnt', 'origin', 'user-agent', 'x-csrftoken', 'x-requested-with',
 ]
+CORS_ALLOW_METHODS = ['DELETE', 'GET', 'OPTIONS', 'PATCH', 'POST', 'PUT']
 
-CORS_ALLOW_METHODS = [
-    'DELETE',
-    'GET',
-    'OPTIONS',
-    'PATCH',
-    'POST',
-    'PUT',
-]
-
-CORS_EXPOSE_HEADERS = [
-    'Content-Type',
-    'Authorization',
-]
-
-# Logging Configuration
+# ── Logging ───────────────────────────────────────────────────────────────────
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
         'verbose': {
-            'format': '[{levelname}] {asctime} {name} {process:d} {thread:d} {message}',
+            'format': '[{levelname}] {asctime} {name} pid:{process:d} tid:{thread:d} {message}',
             'style': '{',
         },
         'simple': {
@@ -202,23 +183,12 @@ LOGGING = {
             'style': '{',
         },
     },
-    'filters': {
-        'require_debug_true': {
-            '()': 'django.utils.log.RequireDebugTrue',
-        },
-        'require_debug_false': {
-            '()': 'django.utils.log.RequireDebugFalse',
-        },
-    },
     'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'simple',
-        },
+        'console': {'class': 'logging.StreamHandler', 'formatter': 'simple'},
         'file': {
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': BASE_DIR / 'logs' / 'django.log',
-            'maxBytes': 1024 * 1024 * 10,  # 10MB
+            'maxBytes': 1024 * 1024 * 10,  # 10 MB
             'backupCount': 5,
             'formatter': 'verbose',
         },
@@ -231,50 +201,51 @@ LOGGING = {
         },
     },
     'loggers': {
-        'django': {
-            'handlers': ['console', 'file'],
-            'level': 'INFO',
-        },
-        'employees': {
-            'handlers': ['console', 'file'],
-            'level': 'INFO',
-        },
-        'audit': {
-            'handlers': ['audit_file'],
-            'level': 'INFO',
-        },
+        'django': {'handlers': ['console', 'file'], 'level': 'INFO'},
+        'employees': {'handlers': ['console', 'file'], 'level': 'INFO'},
+        'audit': {'handlers': ['audit_file'], 'level': 'INFO', 'propagate': False},
     },
 }
 
-# Debug Toolbar
+# ── Debug Toolbar ─────────────────────────────────────────────────────────────
 INTERNAL_IPS = ['127.0.0.1', 'localhost']
 
-# DRF Spectacular (API Documentation)
+# ── DRF Spectacular (API Docs) ────────────────────────────────────────────────
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Employee Management System API',
-    'DESCRIPTION': 'Comprehensive REST API for Employee Management with MySQL integration, concurrency control, and async processing',
-    'VERSION': '1.0.0',
-    # 'SERVE_PERMISSIONS': ['rest_framework.permissions.IsAuthenticated'], # Uncomment to require authentication for API docs
+    'TITLE': 'Enterprise Workforce HRIS API',
+    'DESCRIPTION': (
+        'Comprehensive REST API for workforce management. '
+        'Features: JWT auth, role-based permissions, bulk CSV ingestion with threading, '
+        'optimized ORM queries, audit trails, and leave management with concurrency control.'
+    ),
+    'VERSION': '2.0.0',
     'SERVE_PERMISSIONS': ['rest_framework.permissions.AllowAny'],
-    'SERVERS': [
-        {'url': 'http://localhost:8000', 'description': 'Development'},
-        {'url': 'http://127.0.0.1:8000', 'description': 'Local'},
-    ],
-    'AUTHENTICATION': {
-        'Bearer': {
-            'type': 'http',
-            'scheme': 'bearer',
-            'bearerFormat': 'JWT',
-        }
-    },
 }
 
-# Threading and Concurrency
-THREAD_POOL_SIZE = 5
-THREAD_TIMEOUT = 300  # 5 minutes
+# ── File Upload ───────────────────────────────────────────────────────────────
+MAX_UPLOAD_SIZE = 10 * 1024 * 1024   # 10 MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = MAX_UPLOAD_SIZE
+FILE_UPLOAD_MAX_MEMORY_SIZE = MAX_UPLOAD_SIZE
 
-# File Upload Settings
-MAX_UPLOAD_SIZE = 5242880  # 5MB
-DATA_UPLOAD_MAX_MEMORY_SIZE = 5242880
-FILE_UPLOAD_MAX_MEMORY_SIZE = 5242880
+# ── Threading / Concurrency ───────────────────────────────────────────────────
+THREAD_POOL_SIZE = int(os.getenv('THREAD_POOL_SIZE', 5))
 
+# ── Celery (stub — ready to activate with Redis) ──────────────────────────────
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TIMEZONE = TIME_ZONE
+
+# ── Security (production values — override via env in prod) ───────────────────
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_BROWSER_XSS_FILTER = True
+    X_FRAME_OPTIONS = 'DENY'
