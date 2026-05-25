@@ -29,6 +29,7 @@
   .filter-bar { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; }
 </style>
 
+{% if can_submit_leave %}
 <div class="form-card">
   <div class="form-title">Request Time Off</div>
   <form id="leaveRequestForm" class="form-grid">
@@ -52,12 +53,19 @@
       <label class="form-label">Reason</label>
       <textarea id="reason" class="form-input" rows="2" placeholder="Briefly explain why you are requesting leave..."></textarea>
     </div>
-    <div style="grid-column: 1 / -1; display:flex; gap:16px; align-items:center; margin-top:8px;">
+    <div style="grid-column: 1 / -1; display:flex; gap:16px; align-items:center; margin-top:8px; flex-wrap: wrap;">
       <button type="button" class="btn btn-primary" onclick="submitLeaveRequest()">Submit Request</button>
       <span id="leave-request-status" style="color: var(--text-secondary); font-size: 0.875rem;"></span>
     </div>
   </form>
 </div>
+{% elif is_hr_admin %}
+<div class="form-card">
+  <div class="form-title">Leave Approval Queue</div>
+  <p style="color: var(--text-secondary);">HR can review, approve, or reject pending leave requests below. Leave requests must be created by employees and managers only.</p>
+  <div id="leave-action-status" style="color: var(--text-secondary); font-size: 0.95rem; margin-top: 8px;"></div>
+</div>
+{% endif %}
 
 <form method="get" class="filter-bar">
   <select name="status" class="form-input" style="min-width: 150px;">
@@ -73,7 +81,16 @@
 <div class="table-wrap">
   {% if leaves %}
   <table class="data-table">
-    <thead><tr><th>Employee</th><th>Leave Details</th><th>Dates</th><th>Status</th><th>Approver</th></tr></thead>
+    <thead>
+      <tr>
+        <th>Employee</th>
+        <th>Leave Details</th>
+        <th>Dates</th>
+        <th>Status</th>
+        <th>Approver</th>
+        {% if can_approve_leaves %}<th>Actions</th>{% endif %}
+      </tr>
+    </thead>
     <tbody>
       {% for leave in leaves %}
       <tr>
@@ -84,6 +101,9 @@
         <td>
           <div style="font-weight:500;">{{ leave.get_leave_type_display }}</div>
           <div style="font-size:0.75rem; color:var(--text-secondary); margin-top:2px;">Requested {{ leave.created_at|timesince }} ago</div>
+          <div style="margin-top:8px; color:var(--text-secondary); font-size:0.82rem;">
+            {{ leave.approval_notes|default:"No comments yet." }}
+          </div>
         </td>
         <td style="color:var(--text-secondary);">{{ leave.start_date|date:"M d, Y" }} &rarr; {{ leave.end_date|date:"M d, Y" }}</td>
         <td>
@@ -92,6 +112,16 @@
           </span>
         </td>
         <td style="font-size:0.875rem; color:var(--text-secondary);">{{ leave.approved_by.get_full_name|default:"Pending" }}</td>
+        {% if can_approve_leaves %}
+        <td>
+          {% if leave.status == 'pending' %}
+            <button type="button" class="btn btn-outline btn-sm" onclick="processLeaveRequest('{{ leave.id }}', 'approve')">Approve</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="processLeaveRequest('{{ leave.id }}', 'reject')">Reject</button>
+          {% else %}
+            <a href="/employees/{{ leave.employee.id }}/" class="btn btn-outline btn-sm">View</a>
+          {% endif %}
+        </td>
+        {% endif %}
       </tr>
       {% endfor %}
     </tbody>
@@ -156,6 +186,41 @@
       setTimeout(() => location.reload(), 1200);
     } catch (error) {
       statusEl.textContent = 'Unable to submit request. Please try again.';
+      console.error(error);
+    }
+  }
+
+  async function processLeaveRequest(leaveId, action) {
+    const statusEl = document.getElementById('leave-request-status') || document.getElementById('leave-action-status');
+    const actionMessage = action === 'approve' ? 'Approve this request' : 'Reject this request';
+    const note = window.prompt(`${actionMessage} and add a comment (optional):`, '');
+    if (note === null) {
+      return;
+    }
+
+    if (statusEl) {
+      statusEl.textContent = action === 'approve' ? 'Approving…' : 'Rejecting…';
+    }
+
+    try {
+      const response = await fetch(`/api/v1/leave-requests/${leaveId}/${action}_leave/`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: JSON.stringify({ approval_notes: note.trim() })
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        statusEl.textContent = result.detail || JSON.stringify(result);
+        return;
+      }
+      statusEl.textContent = `Leave request ${action}d successfully. Refreshing…`;
+      setTimeout(() => location.reload(), 1200);
+    } catch (error) {
+      statusEl.textContent = 'Unable to update request. Please try again.';
       console.error(error);
     }
   }

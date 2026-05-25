@@ -13,11 +13,13 @@ from django.db import transaction
 from django.db.models import Count, Avg, Sum, Q
 from rest_framework import viewsets, status, generics, views
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 
 from .models import (
-    CustomUser, Department, EmployeeProfile, LeaveRequest, AuditLog, BulkUploadJob
+    CustomUser, Department, EmployeeProfile, LeaveRequest, AuditLog, BulkUploadJob,
+    generate_employee_id
 )
 from .serializers import (
     CustomUserSerializer, CustomUserCreateSerializer, DepartmentSerializer,
@@ -312,6 +314,13 @@ class LeaveRequestViewSet(viewsets.ModelViewSet):
     search_fields = ['employee__user__email', 'leave_type', 'status']
     ordering_fields = ['start_date', 'created_at', 'status']
     filterset_fields = ['status', 'leave_type']
+    
+    # In views.py, inside LeaveRequestViewSet
+    def get_serializer_context(self):
+        # This ensures 'request' is available inside serializer.validate()
+        context = super().get_serializer_context()
+        context.update({"request": self.request})
+        return context
 
     def get_queryset(self):
         qs = LeaveRequest.objects.select_related(
@@ -333,12 +342,27 @@ class LeaveRequestViewSet(viewsets.ModelViewSet):
         return [IsAuthenticated()]
 
     def perform_create(self, serializer):
-        if hasattr(self.request.user, 'profile'):
-            serializer.save(employee=self.request.user.profile)
-        else:
+        user = self.request.user
+
+        if user.is_hr_admin:
+            raise PermissionDenied('HR users cannot submit leave requests.')
+
+        employee = getattr(user, 'profile', None)
+        if employee is None and user.is_authenticated and not user.is_superuser:
+            employee, _ = EmployeeProfile.objects.get_or_create(
+                user=user,
+                defaults={
+                    'employee_id': generate_employee_id(user),
+                    'salary': 0
+                }
+            )
+
+        if employee is None:
             raise serializer.ValidationError(
                 {'error': 'User does not have an employee profile'}
             )
+
+        serializer.save(employee=employee)
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanApproveLeaves])
     def approve_leave(self, request, pk=None):

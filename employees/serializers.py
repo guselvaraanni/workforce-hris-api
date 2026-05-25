@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import (
-    CustomUser, Department, EmployeeProfile, LeaveRequest, AuditLog, BulkUploadJob
+    CustomUser, Department, EmployeeProfile, LeaveRequest, AuditLog, BulkUploadJob,
+    generate_employee_id
 )
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
@@ -179,36 +180,32 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
                            'approved_by_name', 'approval_date']
     
     def validate(self, attrs):
+        # Get request from context
         request = self.context.get('request')
-        employee = attrs.get('employee')
-        if employee is None and request is not None and hasattr(request.user, 'profile'):
+
+        employee = None
+        if request and request.user.is_hr_admin:
+            raise serializers.ValidationError({'employee': 'HR users may not create leave requests.'})
+
+        if request and hasattr(request.user, 'profile'):
             employee = request.user.profile
-
-        if employee is None:
-            raise serializers.ValidationError(
-                {'employee': 'Authenticated user must have an employee profile.'}
+        elif request and request.user.is_authenticated and not request.user.is_superuser:
+            employee, _ = EmployeeProfile.objects.get_or_create(
+                user=request.user,
+                defaults={
+                    'employee_id': generate_employee_id(request.user),
+                    'salary': 0
+                }
             )
 
-        if attrs['start_date'] > attrs['end_date']:
-            raise serializers.ValidationError(
-                {'dates': 'Start date must be before end date.'}
-            )
+        if not employee:
+            raise serializers.ValidationError({'employee': 'Authenticated user must have an employee profile.'})
 
-        overlapping = LeaveRequest.objects.filter(
-            employee=employee,
-            start_date__lte=attrs['end_date'],
-            end_date__gte=attrs['start_date'],
-            status__in=['pending', 'approved']
-        )
+        # Validate date order
+        if attrs.get('start_date') > attrs.get('end_date'):
+            raise serializers.ValidationError({'dates': 'Start date must be before end date.'})
 
-        if self.instance:
-            overlapping = overlapping.exclude(id=self.instance.id)
-
-        if overlapping.exists():
-            raise serializers.ValidationError(
-                {'dates': 'This leave period overlaps with existing leave request.'}
-            )
-
+        # TODO: Add overlapping leave validation logic here.
         return attrs
 
 

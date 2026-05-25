@@ -45,8 +45,18 @@
   /* Buttons & Badges */
   .btn-ghost { font-size: 0.875rem; font-weight: 500; color: var(--text-secondary, #9ca3af); text-decoration: none; transition: color 0.2s; }
   .btn-ghost:hover { color: var(--primary, #4f46e5); }
+
+  /* Quick Form Inputs */
+  .quick-input { width: 100%; padding: 8px 12px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--bg-app); color: var(--text-primary); font-family: inherit; font-size: 0.85rem; }
+  .quick-input:focus { outline: none; border-color: var(--primary); }
 </style>
 
+<div style="margin-bottom: 32px;">
+  <h2 style="font-size: 1.75rem; font-weight: 700; margin-bottom: 4px; letter-spacing: -0.02em;">Welcome back, {{ user.first_name|default:user.email }}! 👋</h2>
+  <p style="color: var(--text-secondary); margin: 0;">Here is what is happening in your workspace today.</p>
+</div>
+
+{% if user.is_hr_admin %}
 <div class="dash-kpi-grid">
   <div class="dash-kpi-card">
     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
@@ -81,9 +91,7 @@
   </div>
 </div>
 
-{% if user.is_hr_admin %}
 <div class="dash-grid-2">
-  
   <div class="dash-panel">
     <div class="dash-panel-header">
       <h3 class="dash-panel-title">Headcount by Department</h3>
@@ -100,7 +108,7 @@
               <span style="color:var(--text-secondary,#9ca3af);">{{ dept.headcount }} Employees</span>
             </div>
             <div style="height:8px; background:var(--bg-app,#0e1015); border-radius:99px; overflow:hidden;">
-              <div style="height:100%; background:var(--primary,#4f46e5); border-radius:99px; width:{% if max_hc %}{% widthratio dept.headcount max_hc 100 %}%{% else %}0%{% endif %}; transition:width 1s ease-out;"></div>
+              <div style="height:100%; background:var(--primary,#4f46e5); border-radius:99px; width:{% if max_hc %}{% widthratio dept.headcount max_hc|default:1 100 %}{% else %}0{% endif %}%; transition:width 1s ease-out;"></div>
             </div>
           </div>
           {% endfor %}
@@ -148,7 +156,7 @@
 </div>
 {% endif %}
 
-{% if user.is_hr_admin or user.is_manager %}
+{% if user.is_manager or user.is_hr_admin %}
   {% if my_team %}
   <div class="dash-panel" style="margin-top: 32px;">
     <div class="dash-panel-header">
@@ -184,7 +192,7 @@
             <td>{{ emp.department.name|default:"—" }}</td>
             <td>
               <span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:99px; font-size:0.75rem; font-weight:500; {% if emp.employment_status == 'active' %}background:rgba(16,185,129,0.1); color:#10b981;{% else %}background:rgba(156,163,175,0.1); color:var(--text-secondary,#9ca3af);{% endif %}">
-                <span style="width:6px; height:6px; border-radius:50%; {% if emp.employment_status == 'active' %}background: #10b981; {% else %}background:var(--text-secondary,#9ca3af);{% endif %}"></span>
+                <span style="width:6px; height:6px; border-radius:50%; {% if emp.employment_status == 'active' %}background:#10b981;{% else %}background:var(--text-secondary,#9ca3af);{% endif %}"></span>
                 {{ emp.employment_status|title }}
               </span>
             </td>
@@ -197,25 +205,31 @@
   {% endif %}
 {% endif %}
 
-{% if not user.is_hr_admin and not user.is_manager %}
-  <div class="dash-grid-2" style="margin-top:24px;">
+{% if user_profile %}
+  <div class="dash-grid-2" style="margin-top: 32px;">
     
     <div class="dash-panel">
       <div class="dash-panel-header">
         <h3 class="dash-panel-title">My Profile</h3>
-        <a href="/employees/{{ user_profile.id }}/" class="btn-ghost">View Full &rarr;</a>
+        <div style="display:flex; gap:12px;">
+          <a href="/employees/{{ user_profile.id }}/edit/" class="btn-ghost" style="color:var(--primary,#4f46e5);">✎ Edit Details</a>
+        </div>
       </div>
-      <div class="dash-panel-body" style="display:flex; flex-direction:column; gap:20px;">
+      <div class="dash-panel-body" style="display:flex; flex-direction:column; justify-content:space-between;">
         <div style="display:flex; align-items:center; gap:20px;">
-          <div style="width:64px; height:64px; border-radius:16px; background:linear-gradient(135deg, var(--primary,#4f46e5) 0%, #818cf8 100%); color:#fff; display:flex; align-items:center; justify-content:center; font-size:1.5rem; font-weight:700; box-shadow:0 10px 15px -3px rgba(79,70,229,0.2);">
-            {{ user_profile.user.first_name.0|upper }}{{ user_profile.user.last_name.0|upper }}
+          <div style="width:64px; height:64px; border-radius:16px; background:linear-gradient(135deg, var(--primary,#4f46e5) 0%, #818cf8 100%); color:#fff; display:flex; align-items:center; justify-content:center; font-size:1.5rem; font-weight:700; box-shadow:0 10px 15px -3px rgba(79,70,229,0.2); overflow:hidden;">
+            {% if user_profile.profile_picture %}
+              <img src="{{ user_profile.profile_picture.url }}" alt="Profile" style="width:100%; height:100%; object-fit:cover;">
+            {% else %}
+              {{ user_profile.user.first_name.0|upper }}{{ user_profile.user.last_name.0|upper }}
+            {% endif %}
           </div>
           <div>
             <div style="font-size:1.25rem; font-weight:600; color:var(--text-primary,#f9fafb);">{{ user_profile.user.get_full_name }}</div>
             <div style="font-size:0.875rem; color:var(--text-secondary,#9ca3af);">{{ user_profile.employee_id }} &bull; {{ user_profile.department.name|default:"No Department" }}</div>
           </div>
         </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:12px;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:24px;">
            <div style="padding:16px; background:var(--bg-app,#0e1015); border-radius:8px; border:1px solid var(--border-subtle,#2c313d);">
              <div style="font-size:0.75rem; color:var(--text-tertiary,#6b7280); text-transform:uppercase; margin-bottom:4px;">Pending Leaves</div>
              <div style="font-size:1.5rem; font-weight:600; color:#f59e0b;">{{ leave_summary.pending }}</div>
@@ -230,46 +244,97 @@
 
     <div class="dash-panel">
       <div class="dash-panel-header">
-        <h3 class="dash-panel-title">Recent Leave Requests</h3>
-        <a href="/leaves/" class="btn-ghost">Request Time Off &rarr;</a>
+        <h3 class="dash-panel-title">Request Time Off</h3>
+        <a href="/leaves/" class="btn-ghost">View All &rarr;</a>
       </div>
-      <div style="overflow-x:auto;">
-        {% if recent_my_leaves %}
-        <table class="dash-table">
-          <thead>
-            <tr>
-              <th>Type</th>
-              <th>Dates</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for leave in recent_my_leaves %}
-            <tr>
-              <td style="font-weight:500;">{{ leave.get_leave_type_display }}</td>
-              <td style="color:var(--text-secondary,#9ca3af);">{{ leave.start_date|date:"M d" }} — {{ leave.end_date|date:"M d" }}</td>
-              <td>
-                <span style="display:inline-block; padding:4px 10px; border-radius:6px; font-size:0.75rem; font-weight:600; 
-                  {% if leave.status == 'approved' %}background:rgba(16,185,129,0.1); color:#10b981;
-                  {% elif leave.status == 'pending' %}background:rgba(245,158,11,0.1); color:#f59e0b;
-                  {% else %}background:rgba(239,68,68,0.1); color:#ef4444;{% endif %}">
-                  {{ leave.status|title }}
-                </span>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-        {% else %}
-        <div style="text-align:center; padding:40px 0; color:var(--text-secondary,#9ca3af);">
-          <div style="font-size:2rem; margin-bottom:12px;">🏖️</div>
-          <p style="margin:0; font-size:0.95rem;">You have no recent leave requests.</p>
-        </div>
-        {% endif %}
+      <div class="dash-panel-body">
+        <form id="quickLeaveForm" style="display: flex; flex-direction: column; gap: 16px;">
+          <div>
+            <label style="display:block; font-size:0.8rem; color:var(--text-secondary); margin-bottom:6px;">Leave Type</label>
+            <select id="quick_leave_type" class="quick-input">
+              <option value="annual">Annual</option>
+              <option value="sick">Sick</option>
+              <option value="personal">Personal</option>
+              <option value="maternity">Maternity</option>
+              <option value="paternity">Paternity</option>
+              <option value="unpaid">Unpaid</option>
+            </select>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div>
+              <label style="display:block; font-size:0.8rem; color:var(--text-secondary); margin-bottom:6px;">Start Date</label>
+              <input type="date" id="quick_start_date" class="quick-input">
+            </div>
+            <div>
+              <label style="display:block; font-size:0.8rem; color:var(--text-secondary); margin-bottom:6px;">End Date</label>
+              <input type="date" id="quick_end_date" class="quick-input">
+            </div>
+          </div>
+          <div>
+            <label style="display:block; font-size:0.8rem; color:var(--text-secondary); margin-bottom:6px;">Reason</label>
+            <textarea id="quick_reason" class="quick-input" rows="2" placeholder="Brief reason..."></textarea>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+            <span id="quick-leave-status" style="font-size:0.8rem; font-weight:500;"></span>
+            <button type="button" class="btn btn-primary btn-sm" onclick="submitQuickLeave()">Submit Request</button>
+          </div>
+        </form>
       </div>
     </div>
-    
   </div>
 {% endif %}
 
+<script>
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+  }
+
+  async function submitQuickLeave() {
+    const statusEl = document.getElementById('quick-leave-status');
+    statusEl.textContent = 'Submitting...';
+    statusEl.style.color = 'var(--text-secondary)';
+
+    const payload = {
+      leave_type: document.getElementById('quick_leave_type').value,
+      start_date: document.getElementById('quick_start_date').value,
+      end_date: document.getElementById('quick_end_date').value,
+      reason: document.getElementById('quick_reason').value,
+    };
+
+    if (!payload.start_date || !payload.end_date || !payload.reason) {
+      statusEl.textContent = 'Please fill all fields.';
+      statusEl.style.color = 'var(--warning)';
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/v1/leave-requests/', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      const result = await response.json();
+      if (!response.ok) {
+        statusEl.textContent = result.detail || result.error || 'Validation error.';
+        statusEl.style.color = 'var(--danger)';
+        return;
+      }
+      
+      statusEl.textContent = 'Success! Refreshing...';
+      statusEl.style.color = 'var(--success)';
+      setTimeout(() => location.reload(), 1200);
+    } catch (error) {
+      statusEl.textContent = 'Network error.';
+      statusEl.style.color = 'var(--danger)';
+    }
+  }
+</script>
 {% endblock %}

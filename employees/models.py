@@ -3,7 +3,8 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator, EmailValidator
 from django.utils import timezone
 import uuid
-
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 class CustomUser(AbstractUser):
     """
@@ -65,6 +66,11 @@ class Department(models.Model):
     
     def __str__(self):
         return self.name
+
+
+def generate_employee_id(user):
+    """Generate a safe employee_id that fits the 20-character field."""
+    return f"EMP-{user.id.hex[:12]}"
 
 
 class EmployeeProfile(models.Model):
@@ -143,6 +149,16 @@ class EmployeeProfile(models.Model):
     
     def get_full_name(self):
         return self.user.get_full_name()
+    
+    @receiver(post_save, sender=CustomUser)
+    def create_employee_profile(sender, instance, created, **kwargs):
+        if created and not instance.is_superuser:
+            # Automatically create profile for new users
+            EmployeeProfile.objects.create(
+                user=instance,
+                employee_id=generate_employee_id(instance),
+                salary=0
+            )
 
 
 class LeaveRequest(models.Model):

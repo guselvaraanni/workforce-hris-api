@@ -459,9 +459,13 @@ class LeaveListView(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        user = self.request.user
         ctx['status_choices'] = LeaveRequest.STATUS_CHOICES
         ctx['leave_type_choices'] = LeaveRequest.LEAVE_TYPE_CHOICES
         ctx['selected_status'] = self.request.GET.get('status', '')
+        ctx['is_hr_admin'] = user.is_hr_admin
+        ctx['can_submit_leave'] = not user.is_hr_admin and hasattr(user, 'profile')
+        ctx['can_approve_leaves'] = user.is_hr_admin or user.is_manager
         return ctx
 
 

@@ -41,16 +41,17 @@ def process_csv_file(job_id):
         job_id: UUID of the BulkUploadJob record (already committed to DB)
     """
     try:
-        job = BulkUploadJob.objects.select_for_update().get(id=job_id)
+        with transaction.atomic():
+            job = BulkUploadJob.objects.select_for_update().get(id=job_id)
 
-        if job.status == 'processing':
-            logger.warning(f"Job {job_id} is already processing — skipping duplicate start")
-            return
+            if job.status == 'processing':
+                logger.warning(f"Job {job_id} is already processing — skipping duplicate start")
+                return
 
-        job.status = 'processing'
-        job.started_at = timezone.now()
-        job.thread_id = threading.current_thread().name
-        job.save(update_fields=['status', 'started_at', 'thread_id'])
+            job.status = 'processing'
+            job.started_at = timezone.now()
+            job.thread_id = threading.current_thread().name
+            job.save(update_fields=['status', 'started_at', 'thread_id'])
 
         logger.info(f"Starting CSV processing for job {job_id} in thread {job.thread_id}")
 
