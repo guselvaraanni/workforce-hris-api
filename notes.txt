@@ -1,0 +1,436 @@
+================================================================================
+workforce-hris-api — Maintainer's Handbook (notes.txt)
+================================================================================
+
+IMPORTANT:
+For every future iteration / update / refactor / feature addition in this
+project, maintain and update BOTH:
+
+  * PROJECT_ANALYSIS.md
+  * notes.txt
+
+These files must always reflect the latest architecture, APIs, workflows,
+and implementation details.
+
+--------------------------------------------------------------------------------
+0. TL;DR — what is this project?
+--------------------------------------------------------------------------------
+
+A Django 4.2 + Django REST Framework HRIS (Human Resources Information System)
+backed by MySQL 8. It manages employees, departments, leaves, an audit log,
+and CSV-based bulk imports. It ships its own server-side rendered UI at
+/dashboard/, /employees/, /leaves/, etc. There is ALSO a partially-built
+SPA login page (templates/index.html) and an unwired JS SDK
+(static/js/app.js) — treat both as either legacy or a future direction.
+
+One Django app holds everything: `employees/`.
+
+--------------------------------------------------------------------------------
+1. Quick start (the way it actually works today)
+--------------------------------------------------------------------------------
+
+Prereqs: Python 3.11, MySQL 8, virtualenv.
+
+   cd C:\Raanni\workforce-hris-api
+   python -m venv venv
+   venv\Scripts\activate
+   pip install -r requirements.txt
+
+Create the DB (one-off):
+   mysql -uroot -p
+     CREATE DATABASE employee_management_db CHARACTER SET utf8mb4
+            COLLATE utf8mb4_unicode_ci;
+     (use root/selva as in .env, or change .env)
+
+Run:
+   python manage.py migrate
+   python manage.py seed_data         # creates demo HR + 50 employees
+   python manage.py runserver
+
+Login at http://127.0.0.1:8000/ with
+   hr@example.com / Hr@Admin123        (HR admin)
+   employee1@example.com / TestPass123!  (manager)
+
+Tests (currently MOSTLY BROKEN — see §6):
+   pytest tests/ -v
+
+--------------------------------------------------------------------------------
+2. Data model — at a glance
+--------------------------------------------------------------------------------
+
+CustomUser  (extends AbstractUser; PK=UUID; email is the USERNAME_FIELD)
+  ├── EmployeeProfile  (OneToOne with CustomUser, CASCADE delete)
+  │     ├── department  → Department  (SET_NULL)
+  │     └── manager     → CustomUser  (SET_NULL)
+  ├── LeaveRequest      (FK from EmployeeProfile, CASCADE)
+  │     └── approved_by → CustomUser  (SET_NULL)
+  ├── AuditLog          (FK to CustomUser, SET_NULL; content_type is a string)
+  └── BulkUploadJob     (FK to CustomUser, SET_NULL)
+
+Flags on CustomUser:
+  is_hr_admin   — full access
+  is_manager    — sees only their reports
+  (neither set) — sees only own profile
+
+EVERY non-superuser CustomUser auto-gets an EmployeeProfile via a post_save
+signal in models.py — see §5 "Known issues" for why this matters.
+
+--------------------------------------------------------------------------------
+3. How a request flows
+--------------------------------------------------------------------------------
+
+3.1 Template-rendered page (e.g. /employees/)
+   Browser GET /employees/
+     → config/urls.py routes to employees.template_views.EmployeeListView
+     → LoginRequiredMixin redirects to / if anonymous
+     → get_queryset() filters EmployeeProfile by role
+     → Django paginator slices
+     → template employees.html renders with `employees`, `departments`,
+       `status_choices`, `selected_*`, pagination context
+     → response sent
+
+3.2 API call (e.g. submitting a leave from /leaves/)
+   Browser fetch POST /api/v1/leave-requests/ with JSON + X-CSRFToken header
+     → config/urls.py → 'api/v1/' include('employees.urls')
+     → DefaultRouter routes to LeaveRequestViewSet
+     → SessionAuthentication validates cookie + CSRF
+     → IsAuthenticated permission
+     → LeaveRequestSerializer.validate() — checks dates, creates a profile
+       if missing, BLOCKS HR admins, [TODO: overlap]
+     → perform_create() saves with employee=user.profile
+     → pre_save/post_save signals run (no AuditLog because created=True)
+     → response 201
+
+3.3 Bulk CSV upload
+   Browser POST /api/v1/bulk-uploads/ (multipart)
+     → BulkUploadViewSet.perform_create()
+       → BulkUploadJob row saved with the uploaded file
+       → transaction.on_commit(lambda: _start_upload_thread(job_id))
+     → response 201 with the job ID
+     → After Django commits the transaction, a threading.Thread starts
+       running employees.utils.csv_processor.process_csv_file(job_id)
+   Inside the thread (different DB connection!):
+     → re-locks the BulkUploadJob row (select_for_update)
+     → marks it 'processing'
+     → reads + validates every row
+     → bulk_create CustomUsers, bulk_create EmployeeProfiles
+       (signals don't fire on bulk_create — by design here)
+     → bulk_create AuditLog entries
+     → marks job 'completed' with error_log
+
+The post_save signal that auto-creates EmployeeProfile DOES NOT FIRE here,
+because bulk_create skips signals. Important.
+
+--------------------------------------------------------------------------------
+4. Validation — where it lives, by responsibility
+--------------------------------------------------------------------------------
+
+  HTTP / parsing layer
+    - DRF's content negotiation (JSON vs multipart)
+    - drf_spectacular schema (for /api/v1/docs/ only)
+
+  Permissions (employees/permissions.py)
+    IsHRAdmin / IsManager / IsHRAdminOrManager / IsEmployee
+    IsOwnEmployeeProfileOrAdmin / CanApproveLeaves / CanDeleteEmployee
+
+  Serializer validators (employees/serializers.py)
+    - LeaveRequestSerializer.validate() — date order, HR cannot create
+    - CustomUserCreateSerializer.validate() — password match
+    - validate_salary on EmployeeProfileSerializer
+    - validate_status on LeaveRequestApprovalSerializer
+
+  Model validators
+    - MinValueValidator(0) on salary, bonus, budget
+    - EmailValidator on CustomUser.email
+    - Unique constraints: email, employee_id, department name
+
+  DB schema
+    - InnoDB strict mode, utf8mb4
+    - Indexes on lookup fields
+
+  Frontend (JS in templates)
+    - Required-field guards in handlers (e.g. dashboard quickLeave)
+    - HTML5 input types (date, email, number)
+
+PROBLEM AREAS (KNOWN TODAY):
+    - Leave overlap is a # TODO in serializer
+    - No client-side date validation
+    - PATCH /api/v1/leave-requests/{id}/ can change status (status not
+      read_only in the default serializer) — auth bypass
+    - LeaveRequestSerializer.validate has side effects (creates a profile)
+
+--------------------------------------------------------------------------------
+5. Authentication & sessions
+--------------------------------------------------------------------------------
+
+Two parallel auth stacks share the same `AUTHENTICATION_BACKENDS`:
+
+  (a) Session login (USED BY THE TEMPLATE UI)
+      POST /login/   →  SessionLoginView (raw Django View)
+      Sets the session cookie, no JSON token returned.
+      GET /logout/   →  Django LogoutView, redirects to /
+
+      The template UI gates pages with LoginRequiredMixin (login_url='/').
+
+  (b) JWT login (NOT USED BY THE UI today)
+      POST /api/v1/auth/login/      → returns {access, refresh, ...}
+      POST /api/v1/auth/refresh/    → refresh-token rotation
+      Only the dead static/js/app.js consumes it.
+
+DRF's default auth classes: JWTAuthentication + SessionAuthentication. Both
+are evaluated; whichever succeeds wins.
+
+CSRF:
+  - Session cookie auth enforces CSRF on POST/PATCH/PUT/DELETE.
+  - The base.html template sets `<meta name="csrf-token" ...>` AND Django
+    sets a csrftoken cookie automatically.
+  - All JS code reads the cookie via getCookie('csrftoken') and sends it
+    in X-CSRFToken.
+
+--------------------------------------------------------------------------------
+6. How database writes happen — and the duplicate-write trap
+--------------------------------------------------------------------------------
+
+When a record is created/updated, the following sequence runs:
+
+  ViewSet.perform_create / perform_update
+    @transaction.atomic
+       serializer.save()
+            → model.save()
+                  → pre_save signals  (employees/signals.py)
+                  → DB INSERT/UPDATE
+                  → post_save signals (employees/signals.py + models.py)
+       log_action(...)        # writes AuditLog with request.user, IP
+  end @transaction.atomic
+
+So an UPDATE to EmployeeProfile or a LeaveRequest STATUS change writes
+TWO AuditLog rows:
+   1. from signals.py — user=None / instance.approved_by, no IP
+   2. from log_action() — user=request.user, with IP
+
+This is unintentional duplication. Pick ONE strategy when refactoring.
+
+--------------------------------------------------------------------------------
+7. Important files to study (in priority order)
+--------------------------------------------------------------------------------
+
+   1. employees/models.py             — domain types AND a stray post_save
+                                         receiver inside the class body
+   2. employees/views.py              — every ViewSet + Analytics + Health
+   3. employees/template_views.py     — every server-rendered page
+   4. employees/serializers.py        — including the TODO for leave overlap
+   5. employees/permissions.py        — RBAC rules
+   6. employees/utils/csv_processor.py — background CSV ingestion pipeline
+   7. employees/signals.py            — pre/post save audit signals
+   8. config/settings.py              — DRF + JWT + DB + logging + security
+   9. config/urls.py                  — wires templates and API together
+  10. tests/test_complete.py          — every test (most fail today; see §9)
+  11. templates/base.html             — sidebar, topbar, logout JS
+  12. templates/index.html            — login (only the BOTTOM half is live;
+                                         top 613 lines are commented-out)
+  13. templates/employee_detail.html  — currently throws TemplateSyntaxError
+  14. Dockerfile + docker-compose.yml + docker/nginx/default.conf
+  15. pytest.ini                       — coverage gate is 70%
+
+--------------------------------------------------------------------------------
+8. Debugging notes
+--------------------------------------------------------------------------------
+
+* Live server logs at logs/django.log (rotating, 10 MB).
+* Audit-only logs at logs/audit.log.
+* Debug Toolbar mounted at /__debug__/ when DEBUG=True (settings.py).
+* Swagger UI at /api/v1/docs/ — useful for endpoint discovery even when
+  the UI doesn't call those endpoints.
+* The `python manage.py runserver` auto-reloader watches everything; if
+  you change a model, ALSO run `makemigrations` and `migrate`.
+
+Repro for the "blank /employees/<id>/ page" issue:
+  http GET /employees/<uuid>/  → 500 with TemplateSyntaxError on a
+  `(user.is_manager ...)` token. Fix: remove the parens (Django template
+  language doesn't support them; precedence already handles `and` before
+  `or`).
+
+Repro for the "Add Employee always 500s" issue:
+  POST /api/v1/employees/   → IntegrityError because the CustomUser
+  post_save receiver in models.py auto-creates an EmployeeProfile, then
+  the serializer's create() inserts a SECOND EmployeeProfile for the same
+  user (unique constraint on user_id). Fix: in EmployeeProfileCreateSerializer.create()
+  use `EmployeeProfile.objects.get_or_create()` and update the auto-
+  created profile in place.
+
+Repro for "Approve button creates two audit rows":
+  POST /api/v1/leave-requests/{id}/approve_leave/
+  → views.py calls log_action() AND signals.py.log_leave_request_changes()
+    also fires.
+  Fix: pick one writer.
+
+--------------------------------------------------------------------------------
+9. Known issues (full list — see PROJECT_ANALYSIS.md §8 for severity)
+--------------------------------------------------------------------------------
+
+Critical:
+  1. CustomUser.post_save creates EmployeeProfile twice on API creation.
+  2. employee_detail.html line 71 has invalid {% if %} parentheses → 500.
+  3. PATCH /api/v1/leave-requests/{id}/ allows status bypass.
+  4. POST /api/v1/auth/register/ is publicly open (AllowAny).
+  5. .env has a real DB password committed to the working tree.
+
+High:
+  6. Every update writes 2 AuditLog rows.
+  7. Deleting a department writes 0 AuditLog rows.
+  8. DELETE on /api/v1/leave-requests/ is wide open.
+  9. Leave overlap validation is a TODO.
+ 10. Analytics "approved_this_month" ignores year.
+ 11. CanApproveLeaves.has_object_permission has a tautological check.
+ 12. make_random_password() will break on Django 5.
+ 13. /api/v1/health/ doesn't actually check anything.
+ 14. employee_detail.html "About & Skills" tab uses invalid template syntax.
+ 15. CSV is loaded entirely into memory (despite docstring).
+ 16. BulkUploadJob.progress_percentage defined twice.
+ 17. EmployeeProfileSerializer.update() lacks transaction.
+ 18. LeaveRequestSerializer.validate() has side effects.
+ 19. JWT login flow is unused by the actual UI.
+
+Medium:
+ 20. DashboardView duplicates WorkforceAnalyticsView's ORM logic.
+ 21. static/js/app.js is dead code (640 lines).
+ 22. templates/index.html has 613 commented-out lines.
+ 23. static/css/temp.css duplicates styles.css byte-for-byte.
+ 24. csv_data/lic.pdf is unrelated.
+ 25. No CI configuration.
+ 26. employees/filters.py FilterSets are not wired.
+ 27. CORS_ALLOWED_ORIGINS is localhost-only.
+ 28. No rate limiting; login endpoint is brute-forceable.
+ 29. pytest --cov-fail-under=70 fails because tests can't complete.
+ 30. /csv_data/sample_bulk_10.csv link 404s.
+ 31. employee_edit.html reads from EmployeeProfile for phone_number (it's on user).
+ 32. __pycache__/ committed earlier; now ignored but leftovers may remain.
+ 33. SessionLoginView returns no user info.
+ 34. Salary visibility scoping not documented.
+ 35. JSON errors shown raw via JSON.stringify in the UI.
+
+Low / cosmetic:
+ 36-43. Minor: ValidationError typo in dead path, employee_id length,
+        inline CSS, hard-coded ₹, empty docs/, empty templates/partials/,
+        500 KB logs/django.log, misleading FINAL_CHANGES.md.
+
+--------------------------------------------------------------------------------
+10. Deployment notes
+--------------------------------------------------------------------------------
+
+Local Docker:
+  docker compose up --build
+  docker compose exec api python manage.py migrate
+  docker compose exec api python manage.py seed_data
+
+The compose file currently overrides DB_HOST in the api service to
+"localhost #db" — looks like a debug leftover. Change to "db" (the MySQL
+service name) for the api container to actually reach MySQL via Docker
+DNS.
+
+Production checklist (also in PROJECT_ANALYSIS.md §9.6):
+  ☐ Set DEBUG=False
+  ☐ Rotate SECRET_KEY, JWT_SECRET_KEY, DB_PASSWORD
+  ☐ Real ALLOWED_HOSTS, CORS_ALLOWED_ORIGINS, CSRF_TRUSTED_ORIGINS
+  ☐ TLS certs on Nginx (config currently has return 301 → HTTPS but cert
+    paths are commented out)
+  ☐ Wire Celery + Redis instead of threading
+  ☐ Add Sentry / OpenTelemetry
+  ☐ Add Prometheus metrics
+  ☐ Database backups (the docker volume is mysql_data)
+  ☐ Pin Python version in Dockerfile
+  ☐ Add CI (GH Actions / GitLab CI)
+
+--------------------------------------------------------------------------------
+11. Testing notes
+--------------------------------------------------------------------------------
+
+The suite uses pytest-django + factory_boy + pytest-cov + pytest-xdist.
+
+How tests should be structured (see PROJECT_ANALYSIS.md §7.5 for the
+target layout):
+
+  tests/
+    conftest.py     — db, client, api_client, hr_user, manager_user, ...
+    factories/      — one file per model
+    unit/           — pure unit tests of serialisers, permissions, services
+    api/            — one file per resource
+    templates/      — Django CBV tests
+    integration/    — full lifecycle (create → update → leave → audit)
+    concurrency/    — TransactionTestCase tests
+
+Today's tests/test_complete.py mixes everything. Splitting is recommended.
+
+Critical test-suite fix before anything else:
+  The CustomUser → EmployeeProfile auto-creation signal must be removed
+  from models.py (or made idempotent in signals.py), otherwise
+  EmployeeProfileFactory cannot succeed. Until that's done, most tests
+  fail at setUp.
+
+Common pytest commands:
+  pytest tests/ -v                 # full run with coverage
+  pytest tests/ --no-cov -k Leave  # only Leave tests, skip coverage gate
+  pytest tests/ -m "not concurrency"  # skip slow concurrency tests
+  pytest tests/ -n auto -v         # parallel execution
+
+To force pytest to use the venv interpreter:
+  C:\Raanni\venv-projects\emp-env\venv\Scripts\python.exe -m pytest tests/
+
+--------------------------------------------------------------------------------
+12. Architecture observations (philosophy and direction)
+--------------------------------------------------------------------------------
+
+* This project mixes server-side rendering and a JSON API but doesn't
+  commit to either. Decide:
+    - Path A: keep templates as the user-facing UI, deprecate the API for
+      external consumers, and delete static/js/app.js.
+    - Path B: build a true SPA (React/Vue) on top of the API, delete the
+      template_views module, and use index.html only as the React shell.
+
+* The "single employees app" works for now but will buckle when adding
+  payroll, attendance, performance reviews, etc. Plan a refactor into
+  domain-bounded apps (users, directory, leaves, audit, imports).
+
+* Background processing via threading.Thread is OK for development. For
+  production, the codebase is already wired to flip to Celery: the
+  process_csv_file() function is task-shaped, and settings.py has the
+  Celery stubs. The migration is ~one afternoon.
+
+* Audit-trail design needs one decision: explicit logs in views vs.
+  signal-driven logs. Currently both exist and both write. Reduce to one.
+
+* Permission classes are good for HTTP gating but should be backed by a
+  thin "services" layer that re-checks role rules at the domain level.
+  This lets the same rules be reused from CLI commands, Celery tasks, etc.
+
+--------------------------------------------------------------------------------
+13. Conventions / coding style for future contributors
+--------------------------------------------------------------------------------
+
+* Python 3.11. Use type hints on new code; existing code is mostly untyped.
+* Black + ruff are NOT enforced today but would be straightforward to add.
+* No mypy today.
+* Naming:
+    Models: PascalCase singular (CustomUser, LeaveRequest)
+    Views:  PascalCase with View / ViewSet suffix
+    URLs:   kebab-case (/leave-requests/), names use snake_case
+    Serializers: PascalCase with Serializer suffix
+* New endpoints go in employees/views.py and are routed via the DefaultRouter
+  in employees/urls.py.
+* New templates extend base.html. Set the relevant
+  {% block nav_<page> %}active{% endblock %} so the sidebar highlights.
+
+--------------------------------------------------------------------------------
+14. Final reminder
+--------------------------------------------------------------------------------
+
+WHENEVER YOU ADD A FEATURE, FIX A BUG, OR REFACTOR ANYTHING:
+  1. Update PROJECT_ANALYSIS.md (the relevant section).
+  2. Update notes.txt (this file).
+  3. Update README.md if the user-facing setup or endpoints changed.
+  4. Add/extend tests in tests/.
+  5. Run `python manage.py makemigrations` after every model change.
+  6. Run the full test suite + coverage gate before opening a PR.
+
+These three documents (README.md, PROJECT_ANALYSIS.md, notes.txt) are
+the project's source of truth for new contributors. Keep them honest.

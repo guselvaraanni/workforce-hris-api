@@ -1,0 +1,11 @@
+email,first_name,last_name,employee_id,salary,department,employment_type,gender,date_of_birth,city,country
+alice.test@example.com,Alice,Test,EMP10001,55000,Engineering,full_time,F,1990-01-15,Mumbai,India
+bob.test@example.com,Bob,Test,EMP10002,60000,Engineering,full_time,M,1988-06-22,Delhi,India
+carol.test@example.com,Carol,Test,EMP10003,52000,HR,full_time,F,1992-03-10,Chennai,India
+dave.test@example.com,Dave,Test,EMP10004,65000,Sales,full_time,M,1985-11-30,Bengaluru,India
+eve.test@example.com,Eve,Test,EMP10005,58000,Marketing,part_time,F,1995-07-25,Hyderabad,India
+frank.test@example.com,Frank,Test,EMP10006,70000,Engineering,full_time,M,1987-09-14,Pune,India
+grace.test@example.com,Grace,Test,EMP10007,48000,Finance,full_time,F,1993-04-18,Kolkata,India
+henry.test@example.com,Henry,Test,EMP10008,75000,Engineering,full_time,M,1984-12-05,Mumbai,India
+iris.test@example.com,Iris,Test,EMP10009,53000,HR,full_time,F,1991-08-29,Delhi,India
+jack.test@example.com,Jack,Test,EMP10010,62000,Sales,full_time,M,1989-02-14,Chennai,India

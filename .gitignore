@@ -1,66 +1,45 @@
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
+*.pyo
+*.pyd
 .Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
 *.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual Environment
-venv/
-ENV/
-env/
-.venv
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
+dist/
+build/
+.eggs/
 
 # Django
 *.log
-*.pot
-/staticfiles/
-/static/
-/media/
+local_settings.py
 db.sqlite3
 db.sqlite3-journal
-/logs/
+staticfiles/
+media/
+!media/.gitkeep
+!media/bulk_uploads/.gitkeep
+!media/profile_pictures/.gitkeep
 
-# Environment variables
+# Environment
 .env
 .env.local
 .env.*.local
 
 # Testing
 .coverage
-.pytest_cache/
 htmlcov/
+.pytest_cache/
+.tox/
+
+# Docker
+.docker/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
 
 # OS
 .DS_Store
-.AppleDouble
-.LSOverride
 Thumbs.db
-
-# Project specific
-node_modules/
-.next/
-out/

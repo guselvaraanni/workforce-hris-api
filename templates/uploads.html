@@ -5,18 +5,32 @@
 
 {% block content %}
 <style>
-  .upload-zone { border: 2px dashed var(--border); border-radius: 12px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.2s; margin-bottom: 24px; }
-  .upload-zone:hover, .upload-zone.drag-over { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 5%, transparent); }
-  .upload-icon { font-size: 2.5rem; margin-bottom: 12px; }
-  .upload-hint { font-size: 0.82rem; color: var(--text-secondary); margin-top: 6px; }
-  .progress-bar { height: 8px; background: var(--bg-tertiary); border-radius: 9999px; overflow: hidden; margin: 6px 0; }
-  .progress-fill { height: 100%; border-radius: 9999px; transition: width 0.5s; }
+  .upload-zone { border: 2px dashed var(--border); border-radius: 16px; padding: 38px 30px; max-width: 900px; margin: 0 auto 24px; text-align: center; cursor: pointer; transition: background 0.2s, border-color 0.2s, transform 0.2s; }
+  .upload-zone:hover, .upload-zone.drag-over { border-color: var(--primary); background: rgba(79, 70, 229, 0.08); transform: translateY(-1px); }
+  .upload-icon { font-size: 2.5rem; margin-bottom: 14px; }
+  .upload-hint { font-size: 0.88rem; color: var(--text-secondary); margin-top: 8px; }
+  .progress-bar { height: 8px; background: var(--bg-tertiary); border-radius: 9999px; overflow: hidden; margin: 10px 0; }
+  .progress-fill { height: 100%; border-radius: 9999px; transition: width 0.4s ease; }
   .progress-fill.completed { background: #22c55e; }
   .progress-fill.processing { background: var(--primary); animation: pulse 1s infinite; }
   .progress-fill.failed { background: #ef4444; }
   .progress-fill.pending { background: #f59e0b; }
-  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
-  .error-list { max-height: 200px; overflow-y: auto; font-size: 0.78rem; font-family: monospace; background: var(--bg-secondary); padding: 12px; border-radius: 8px; color: #ef4444; margin-top: 8px; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
+  .error-list { max-height: 220px; overflow-y: auto; font-size: 0.82rem; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; background: var(--bg-secondary); padding: 14px; border-radius: 10px; color: #ef4444; margin-top: 12px; }
+  .table-wrap { width: 100%; overflow-x: auto; }
+  .table-wrap table { width: 100%; min-width: 760px; border-collapse: collapse; }
+  .table-wrap th, .table-wrap td { text-align: left; }
+  .btn[disabled] { opacity: 0.65; cursor: not-allowed; }
+
+  @media (max-width: 840px) {
+    .upload-zone { padding: 28px 20px; }
+    .upload-icon { font-size: 2rem; }
+    .card-header, .card-body { padding: 18px; }
+    .card { border-radius: 14px; }
+    .table-wrap table { min-width: 100%; }
+    .uploads-actions { display: flex; flex-direction: column; gap: 10px; }
+    #upload-btn { width: 100%; }
+  }
 </style>
 
 <!-- Upload Form -->
