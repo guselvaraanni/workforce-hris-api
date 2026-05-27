@@ -25,13 +25,15 @@ To wire these up in config/urls.py:
         path('ui/uploads/', UploadStatusView.as_view(), name='ui-uploads'),
     ]
 """
-from django.views.generic import ListView, DetailView, CreateView, TemplateView
+import re
+
+from django.views.generic import ListView, DetailView, CreateView, TemplateView, View
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.shortcuts import redirect
 from django.db import transaction
 from django.db.models import Q, Count, Avg, Sum
 from django.core.paginator import Paginator
 from django.contrib import messages
-from django.shortcuts import redirect
 from django.urls import reverse_lazy
 from django.utils import timezone
 
@@ -39,12 +41,29 @@ from .models import (
     EmployeeProfile, Department, LeaveRequest,
     AuditLog, BulkUploadJob, CustomUser
 )
+from .dashboard_context import build_dashboard_context
+from .utils.attendance_service import build_today_summary, monthly_attendance_pct
 
 
 class HRAdminRequiredMixin(UserPassesTestMixin):
     """Mixin that requires the user to be an HR Admin."""
     def test_func(self):
         return self.request.user.is_hr_admin
+
+
+class MyProfileRedirectView(LoginRequiredMixin, View):
+    """Shortcut: /profile/ → current user's HRIS profile page."""
+    login_url = '/'
+
+    def get(self, request, *args, **kwargs):
+        profile = getattr(request.user, 'profile', None)
+        if profile is None:
+            messages.info(
+                request,
+                'Your employee profile is not set up yet. Contact HR or open the directory.',
+            )
+            return redirect('hris-dashboard')
+        return redirect('hris-employee-detail', pk=profile.pk)
 
 
 class DashboardView(LoginRequiredMixin, TemplateView):
@@ -59,87 +78,7 @@ class DashboardView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        user = self.request.user
-
-        # ── Aggregate stats (single query each) ──────────────────────────
-        ctx['total_employees'] = EmployeeProfile.objects.filter(
-            employment_status='active'
-        ).count()
-
-        ctx['total_departments'] = Department.objects.filter(is_active=True).count()
-
-        ctx['pending_leaves'] = LeaveRequest.objects.filter(status='pending').count()
-
-        ctx['recent_uploads'] = BulkUploadJob.objects.filter(
-            status__in=['completed', 'processing']
-        ).count()
-
-        ctx['show_admin_dashboard'] = user.is_hr_admin
-
-        if user.is_hr_admin:
-            # ── Department breakdown (annotated — 1 query) ──────────────
-            ctx['dept_breakdown'] = (
-                Department.objects
-                .filter(is_active=True)
-                .annotate(
-                    headcount=Count(
-                        'employees',
-                        filter=Q(employees__employment_status='active')
-                    ),
-                    avg_salary=Avg(
-                        'employees__salary',
-                        filter=Q(employees__employment_status='active')
-                    )
-                )
-                .values('name', 'headcount', 'avg_salary')
-                .order_by('-headcount')[:8]
-            )
-            ctx['recent_audit'] = (
-                AuditLog.objects
-                .select_related('user')
-                .order_by('-timestamp')[:10]
-            )
-
-        if user.is_manager:
-            ctx['my_team'] = (
-                EmployeeProfile.objects
-                .filter(manager=user, employment_status='active')
-                .select_related('user', 'department')[:5]
-            )
-            ctx['my_team_pending_leaves'] = LeaveRequest.objects.filter(
-                status='pending',
-                employee__manager=user
-            ).count()
-
-        if not user.is_hr_admin and hasattr(user, 'profile'):
-            ctx['leave_summary'] = {
-                'pending': LeaveRequest.objects.filter(
-                    employee=user.profile, status='pending'
-                ).count(),
-                'approved': LeaveRequest.objects.filter(
-                    employee=user.profile, status='approved'
-                ).count(),
-                'rejected': LeaveRequest.objects.filter(
-                    employee=user.profile, status='rejected'
-                ).count(),
-            }
-            ctx['recent_my_leaves'] = (
-                LeaveRequest.objects
-                .filter(employee=user.profile)
-                .order_by('-created_at')[:5]
-            )
-            ctx['upcoming_leave'] = (
-                LeaveRequest.objects
-                .filter(
-                    employee=user.profile,
-                    start_date__gte=timezone.now().date(),
-                    status='approved'
-                )
-                .order_by('start_date')
-                .first()
-            )
-
-        ctx['user_profile'] = getattr(user, 'profile', None)
+        ctx.update(build_dashboard_context(self.request.user))
         return ctx
 
 
@@ -254,6 +193,35 @@ class EmployeeDetailView(LoginRequiredMixin, DetailView):
             .order_by('-timestamp')[:20]
         )
 
+        if employee.skills:
+            ctx['skills_list'] = [
+                s.strip()
+                for s in re.split(r'[;,]', employee.skills)
+                if s.strip()
+            ]
+        else:
+            ctx['skills_list'] = []
+
+        ctx['leave_summary'] = {
+            'pending': LeaveRequest.objects.filter(
+                employee=employee, status='pending',
+            ).count(),
+            'approved': LeaveRequest.objects.filter(
+                employee=employee, status='approved',
+            ).count(),
+            'rejected': LeaveRequest.objects.filter(
+                employee=employee, status='rejected',
+            ).count(),
+        }
+        ctx['attendance_today'] = build_today_summary(employee)
+        ctx['attendance_month_pct'] = monthly_attendance_pct(employee)
+        viewer = self.request.user
+        ctx['can_edit_profile'] = (
+            viewer.is_hr_admin
+            or viewer == employee.user
+            or (viewer.is_manager and employee.manager == viewer)
+        )
+
         return ctx
 
 
@@ -354,7 +322,7 @@ class EmployeeUpdateView(LoginRequiredMixin, TemplateView):
             employee.save()
 
         messages.success(request, 'Employee profile updated successfully.')
-        return redirect('employee-detail', pk=employee.pk)
+        return redirect('hris-employee-detail', pk=employee.pk)
 
 
 class AuditLogTemplateView(LoginRequiredMixin, HRAdminRequiredMixin, ListView):

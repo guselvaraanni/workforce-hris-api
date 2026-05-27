@@ -1,9 +1,11 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+
+app_name = 'api'
 from .views import (
     UserRegistrationView, UserListView, DepartmentViewSet,
     EmployeeProfileViewSet, LeaveRequestViewSet, AuditLogViewSet,
-    BulkUploadViewSet, HealthCheckView
+    BulkUploadViewSet, AttendanceViewSet, HealthCheckView
 )
 
 # Create router for viewsets
@@ -13,6 +15,7 @@ router.register(r'employees', EmployeeProfileViewSet, basename='employee')
 router.register(r'leave-requests', LeaveRequestViewSet, basename='leave-request')
 router.register(r'audit-logs', AuditLogViewSet, basename='audit-log')
 router.register(r'bulk-uploads', BulkUploadViewSet, basename='bulk-upload')
+router.register(r'attendance', AttendanceViewSet, basename='attendance')
 
 urlpatterns = [
     # Health check

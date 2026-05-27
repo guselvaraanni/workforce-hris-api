@@ -10,7 +10,7 @@ from employees.views import CustomTokenObtainPairView, SessionLoginView
 from employees.template_views import (
     DashboardView, EmployeeListView, EmployeeDetailView,
     EmployeeCreateView, EmployeeUpdateView, AuditLogTemplateView,
-    UploadStatusView, LeaveListView, DepartmentListView
+    UploadStatusView, LeaveListView, DepartmentListView, MyProfileRedirectView,
 )
 
 urlpatterns = [
@@ -20,15 +20,17 @@ urlpatterns = [
     path('', TemplateView.as_view(template_name='index.html'), name='home'),
 
     # ── Server-side rendered Django template views ────────────────────────
-    path('dashboard/', DashboardView.as_view(), name='dashboard'),
-    path('employees/', EmployeeListView.as_view(), name='employees'),
-    path('employees/add/', EmployeeCreateView.as_view(), name='employee-add'),
-    path('employees/<uuid:pk>/', EmployeeDetailView.as_view(), name='employee-detail'),
-    path('employees/<uuid:pk>/edit/', EmployeeUpdateView.as_view(), name='employee-edit'),
-    path('departments/', DepartmentListView.as_view(), name='departments'),
-    path('leaves/', LeaveListView.as_view(), name='leaves'),
-    path('uploads/', UploadStatusView.as_view(), name='uploads'),
-    path('audit/', AuditLogTemplateView.as_view(), name='audit'),
+    # UI routes use hris-* names to avoid collision with DRF router (employee-detail, etc.)
+    path('dashboard/', DashboardView.as_view(), name='hris-dashboard'),
+    path('profile/', MyProfileRedirectView.as_view(), name='hris-my-profile'),
+    path('employees/', EmployeeListView.as_view(), name='hris-employees'),
+    path('employees/add/', EmployeeCreateView.as_view(), name='hris-employee-add'),
+    path('employees/<uuid:pk>/', EmployeeDetailView.as_view(), name='hris-employee-detail'),
+    path('employees/<uuid:pk>/edit/', EmployeeUpdateView.as_view(), name='hris-employee-edit'),
+    path('departments/', DepartmentListView.as_view(), name='hris-departments'),
+    path('leaves/', LeaveListView.as_view(), name='hris-leaves'),
+    path('uploads/', UploadStatusView.as_view(), name='hris-uploads'),
+    path('audit/', AuditLogTemplateView.as_view(), name='hris-audit'),
 
     # ── Session login for template UI ─────────────────────────────────────────
     path('login/', SessionLoginView.as_view(), name='session_login'),
@@ -43,7 +45,7 @@ urlpatterns = [
     path('api/v1/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
 
     # ── App API URLs ──────────────────────────────────────────────────────
-    path('api/v1/', include('employees.urls')),
+    path('api/v1/', include(('employees.urls', 'api'), namespace='api')),
 ]
 
 if settings.DEBUG:

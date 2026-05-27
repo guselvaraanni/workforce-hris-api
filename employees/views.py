@@ -19,13 +19,20 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 
 from .models import (
     CustomUser, Department, EmployeeProfile, LeaveRequest, AuditLog, BulkUploadJob,
-    generate_employee_id
+    AttendanceRecord, generate_employee_id
 )
 from .serializers import (
     CustomUserSerializer, CustomUserCreateSerializer, DepartmentSerializer,
     EmployeeProfileSerializer, EmployeeProfileCreateSerializer,
     LeaveRequestSerializer, LeaveRequestApprovalSerializer, AuditLogSerializer,
-    BulkUploadJobSerializer, BulkUploadJobDetailSerializer
+    BulkUploadJobSerializer, BulkUploadJobDetailSerializer, AttendanceRecordSerializer
+)
+from .utils.attendance_service import (
+    check_in as attendance_check_in,
+    check_out as attendance_check_out,
+    build_today_summary,
+    week_summary as compute_week_summary,
+    get_employee_for_user,
 )
 from .permissions import (
     IsHRAdmin, IsManager, IsHRAdminOrManager, IsEmployee,
@@ -616,6 +623,73 @@ class WorkforceAnalyticsView(views.APIView):
             'leave_stats': leave_stats,
             'hire_trend': hire_trend,
         })
+
+
+class AttendanceViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    Attendance records with check-in / check-out actions.
+    """
+    serializer_class = AttendanceRecordSerializer
+    permission_classes = [IsAuthenticated]
+    ordering_fields = ['date', 'check_in']
+    filterset_fields = ['status', 'date']
+
+    def get_queryset(self):
+        qs = AttendanceRecord.objects.select_related(
+            'employee__user', 'employee__department'
+        ).order_by('-date', '-check_in')
+        user = self.request.user
+        if user.is_hr_admin:
+            return qs
+        if user.is_manager:
+            return qs.filter(
+                Q(employee__manager=user) | Q(employee__user=user)
+            )
+        employee = get_employee_for_user(user)
+        if employee:
+            return qs.filter(employee=employee)
+        return qs.none()
+
+    @action(detail=False, methods=['post'])
+    def check_in(self, request):
+        record, err = attendance_check_in(request.user)
+        if err:
+            return Response(err, status=status.HTTP_400_BAD_REQUEST)
+        return Response(AttendanceRecordSerializer(record).data)
+
+    @action(detail=False, methods=['post'])
+    def check_out(self, request):
+        record, err = attendance_check_out(request.user)
+        if err:
+            return Response(err, status=status.HTTP_400_BAD_REQUEST)
+        return Response(AttendanceRecordSerializer(record).data)
+
+    @action(detail=False, methods=['get'])
+    def today(self, request):
+        employee = get_employee_for_user(request.user)
+        if not employee:
+            return Response({'error': 'No employee profile.'}, status=400)
+        summary = build_today_summary(employee)
+        data = {
+            'status': summary['status'],
+            'can_check_in': summary['can_check_in'],
+            'can_check_out': summary['can_check_out'],
+            'check_in': summary['check_in_display'],
+            'check_out': summary['check_out_display'],
+            'duration_display': summary['duration_display'],
+            'progress_pct': summary['progress_pct'],
+            'on_leave': summary['on_leave'],
+        }
+        if summary['record']:
+            data['record'] = AttendanceRecordSerializer(summary['record']).data
+        return Response(data)
+
+    @action(detail=False, methods=['get'])
+    def week_summary(self, request):
+        employee = get_employee_for_user(request.user)
+        if not employee:
+            return Response({'error': 'No employee profile.'}, status=400)
+        return Response(compute_week_summary(employee))
 
 
 class HealthCheckView(views.APIView):

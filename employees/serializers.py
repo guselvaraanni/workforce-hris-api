@@ -2,7 +2,7 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import (
     CustomUser, Department, EmployeeProfile, LeaveRequest, AuditLog, BulkUploadJob,
-    generate_employee_id
+    AttendanceRecord, generate_employee_id
 )
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
@@ -294,3 +294,21 @@ class BulkUploadJobDetailSerializer(serializers.ModelSerializer):
             delta = obj.completed_at - obj.started_at
             return str(delta)
         return None
+
+
+class AttendanceRecordSerializer(serializers.ModelSerializer):
+    employee_name = serializers.CharField(source='employee.get_full_name', read_only=True)
+    employee_id = serializers.CharField(source='employee.employee_id', read_only=True)
+    duration_display = serializers.ReadOnlyField()
+
+    class Meta:
+        model = AttendanceRecord
+        fields = [
+            'id', 'employee', 'employee_name', 'employee_id', 'date',
+            'check_in', 'check_out', 'status', 'duration_display', 'notes',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = [
+            'id', 'employee', 'date', 'check_in', 'check_out', 'status',
+            'created_at', 'updated_at',
+        ]

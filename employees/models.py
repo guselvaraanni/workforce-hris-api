@@ -268,6 +268,60 @@ class AuditLog(models.Model):
         return f"{self.action.upper()} - {self.content_type} ({self.object_id}) at {self.timestamp}"
 
 
+class AttendanceRecord(models.Model):
+    """
+    Daily attendance record per employee (check-in / check-out).
+    One row per employee per calendar day (timezone-aware via service layer).
+    """
+    STATUS_CHOICES = [
+        ('absent', 'Absent'),
+        ('present', 'Present'),
+        ('on_leave', 'On Leave'),
+        ('holiday', 'Holiday'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    employee = models.ForeignKey(
+        EmployeeProfile, on_delete=models.CASCADE, related_name='attendance_records'
+    )
+    date = models.DateField(db_index=True)
+    check_in = models.DateTimeField(null=True, blank=True)
+    check_out = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='absent')
+    notes = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Attendance Record'
+        verbose_name_plural = 'Attendance Records'
+        ordering = ['-date', '-check_in']
+        constraints = [
+            models.UniqueConstraint(fields=['employee', 'date'], name='unique_attendance_per_day'),
+        ]
+        indexes = [
+            models.Index(fields=['employee', 'date']),
+            models.Index(fields=['date', 'status']),
+        ]
+
+    def __str__(self):
+        return f'{self.employee.employee_id} — {self.date} ({self.status})'
+
+    @property
+    def duration_seconds(self):
+        if not self.check_in:
+            return 0
+        end = self.check_out or timezone.now()
+        return max(0, int((end - self.check_in).total_seconds()))
+
+    @property
+    def duration_display(self):
+        secs = self.duration_seconds
+        h, rem = divmod(secs, 3600)
+        m, _ = divmod(rem, 60)
+        return f'{h}h {m}m'
+
+
 class BulkUploadJob(models.Model):
     """
     Bulk Upload Job model for tracking CSV file processing.

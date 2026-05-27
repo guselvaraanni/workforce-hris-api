@@ -62,11 +62,11 @@ class Command(BaseCommand):
         # Create Manager User
         self.stdout.write('Creating Manager user...')
         manager_user, created = CustomUser.objects.get_or_create(
-            email='employee1@example.com',
+            email='manager@example.com',
             defaults={
                 'username': 'manager_user',
-                'first_name': 'Manager',
-                'last_name': 'User',
+                'first_name': 'Alex',
+                'last_name': 'Manager',
                 'is_manager': True,
                 'is_active': True
             }
@@ -75,6 +75,19 @@ class Command(BaseCommand):
             manager_user.set_password('TestPass123!')
             manager_user.save()
             self.stdout.write('  Created Manager user')
+
+        from employees.models import generate_employee_id
+        manager_profile, mp_created = EmployeeProfile.objects.get_or_create(
+            user=manager_user,
+            defaults={
+                'employee_id': generate_employee_id(manager_user),
+                'department': departments[0] if departments else None,
+                'salary': Decimal('95000'),
+                'employment_status': 'active',
+            },
+        )
+        if mp_created:
+            self.stdout.write('  Created manager employee profile')
         
         # Create employees
         self.stdout.write(f'Creating {num_employees} employees...')
@@ -122,8 +135,16 @@ class Command(BaseCommand):
             if (i + 1) % 10 == 0:
                 self.stdout.write(f'  Created {i + 1} employees...')
         
+        # Assign direct reports to the demo manager
+        team_qs = EmployeeProfile.objects.exclude(user=manager_user).filter(
+            employment_status='active', manager__isnull=True
+        )[:12]
+        updated = team_qs.update(manager=manager_user)
+        if updated:
+            self.stdout.write(f'  Assigned {updated} employees to manager@example.com')
+
         self.stdout.write(self.style.SUCCESS(f'Successfully created {num_employees} employees!'))
         self.stdout.write(self.style.SUCCESS('Database seeding completed!'))
         self.stdout.write(self.style.WARNING('\nDefault credentials:'))
-        self.stdout.write(f'  Email: hr@example.com')
-        self.stdout.write(f'  Password: Hr@Admin123')
+        self.stdout.write('  HR Admin: hr@example.com / Hr@Admin123')
+        self.stdout.write('  Manager: manager@example.com / TestPass123!')

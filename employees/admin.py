@@ -1,7 +1,8 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import (
-    CustomUser, Department, EmployeeProfile, LeaveRequest, AuditLog, BulkUploadJob
+    CustomUser, Department, EmployeeProfile, LeaveRequest, AuditLog, BulkUploadJob,
+    AttendanceRecord,
 )
 
 
@@ -126,6 +127,15 @@ class AuditLogAdmin(admin.ModelAdmin):
     def get_user(self, obj):
         return obj.user.email if obj.user else 'System'
     get_user.short_description = 'User'
+
+
+@admin.register(AttendanceRecord)
+class AttendanceRecordAdmin(admin.ModelAdmin):
+    list_display = ('date', 'employee', 'status', 'check_in', 'check_out')
+    list_filter = ('status', 'date')
+    search_fields = ('employee__employee_id', 'employee__user__email')
+    readonly_fields = ('id', 'created_at', 'updated_at')
+    date_hierarchy = 'date'
 
 
 @admin.register(BulkUploadJob)
