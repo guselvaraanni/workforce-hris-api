@@ -1,0 +1,62 @@
+{% if attendance_today %}
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">Today's Attendance</h3>
+    {% if attendance_today.status == "checked_in" %}
+      <span class="attendance-status attendance-status--in">Checked In</span>
+    {% elif attendance_today.status == "completed" %}
+      <span class="attendance-status attendance-status--done">Day Complete</span>
+    {% elif attendance_today.on_leave %}
+      <span class="attendance-status attendance-status--leave">On Approved Leave</span>
+    {% elif attendance_today.status == "not_started" %}
+      <span class="attendance-status attendance-status--out">Not Checked In</span>
+    {% else %}
+      <span class="attendance-status attendance-status--out">Absent</span>
+    {% endif %}
+  </div>
+  <div class="card-body">
+    <div class="attendance-meta">
+      <div class="attendance-meta__item">
+        <div class="attendance-meta__label">Check In</div>
+        <div class="attendance-meta__value">{{ attendance_today.check_in_display }}</div>
+      </div>
+      <div class="attendance-meta__item">
+        <div class="attendance-meta__label">Check Out</div>
+        <div class="attendance-meta__value">{{ attendance_today.check_out_display }}</div>
+      </div>
+      <div class="attendance-meta__item">
+        <div class="attendance-meta__label">Working Time</div>
+        <div class="attendance-meta__value">{{ attendance_today.duration_display }}</div>
+      </div>
+    </div>
+    <div style="margin-top:14px;">
+      <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:var(--text-secondary);">
+        <span>Daily target (8h)</span>
+        <span>{{ attendance_today.progress_pct }}%</span>
+      </div>
+      <div class="progress-bar"><div class="progress-bar__fill" style="width:{{ attendance_today.progress_pct }}%;"></div></div>
+    </div>
+    {% if attendance_week %}
+    <div class="week-strip">
+      {% for day in attendance_week.days %}
+      <div class="week-day week-day--{{ day.state }}{% if day.is_today %} week-day--today{% endif %}">
+        <strong>{{ day.label }}</strong>
+        <div class="dot"></div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  <div class="card-footer" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;">
+    <span id="attendance-action-status" style="font-size:0.8rem;color:var(--text-secondary);"></span>
+    <div class="attendance-actions" style="margin:0;">
+      {% if attendance_today.can_check_in %}
+      <button type="button" class="btn btn-primary btn-sm" onclick="hrisAttendance.checkIn(this)">Check In</button>
+      {% endif %}
+      {% if attendance_today.can_check_out %}
+      <button type="button" class="btn btn-outline btn-sm" onclick="hrisAttendance.checkOut(this)">Check Out</button>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}

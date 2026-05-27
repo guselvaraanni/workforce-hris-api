@@ -1,0 +1,139 @@
+<div class="dash-page-header">
+  <div>
+    <h1>Manager Command Center</h1>
+    <p>Team attendance, pending approvals, and direct reports at a glance.</p>
+  </div>
+  <a href="/leaves/?status=pending" class="btn btn-primary btn-sm">Review approvals</a>
+</div>
+
+<div class="dash-grid dash-grid--4" style="margin-bottom:16px;">
+  <div class="card kpi-card">
+    <div class="kpi-card__label">Direct Reports</div>
+    <div class="kpi-card__value">{{ my_team_count|default:0 }}</div>
+    <div class="kpi-card__meta">Active team members</div>
+  </div>
+  <div class="card kpi-card">
+    <div class="kpi-card__label">Pending Approvals</div>
+    <div class="kpi-card__value">{{ my_team_pending_leaves|default:0 }}</div>
+    <div class="kpi-card__meta">Leave requests awaiting action</div>
+  </div>
+  <div class="card kpi-card">
+    <div class="kpi-card__label">On Leave Today</div>
+    <div class="kpi-card__value">{{ team_on_leave_today|default:0 }}</div>
+    <div class="kpi-card__meta">Approved time off</div>
+  </div>
+  <div class="card kpi-card">
+    <div class="kpi-card__label">Org Pending Leaves</div>
+    <div class="kpi-card__value">{{ pending_leaves }}</div>
+    <div class="kpi-card__meta">All departments</div>
+  </div>
+</div>
+
+<div class="dash-grid dash-grid--2" style="margin-bottom:16px;">
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">Pending Approvals</h3>
+      <a href="/leaves/?status=pending" class="btn-ghost btn-sm">View all</a>
+    </div>
+    <div class="card-body" style="padding:0;">
+      {% if pending_leave_requests %}
+      <table class="data-table">
+        <thead><tr><th>Employee</th><th>Type</th><th>Dates</th><th></th></tr></thead>
+        <tbody>
+          {% for leave in pending_leave_requests %}
+          <tr>
+            <td>{{ leave.employee.user.get_full_name }}</td>
+            <td>{{ leave.get_leave_type_display }}</td>
+            <td>{{ leave.start_date|date:"M j" }} – {{ leave.end_date|date:"M j" }}</td>
+            <td><a href="/leaves/?status=pending" class="btn btn-outline btn-sm">Review</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+        {% include "partials/_empty_state.html" with icon="calendar" title="No pending approvals" message="When your team submits leave requests, they will appear here for quick review." action_url="/leaves/" action_label="Open time off" %}
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">Team Attendance Today</h3>
+    </div>
+    <div class="card-body" style="padding:0;">
+      {% if team_attendance %}
+      <table class="data-table">
+        <thead><tr><th>Employee</th><th>Status</th></tr></thead>
+        <tbody>
+          {% for row in team_attendance %}
+          <tr>
+            <td>
+              <a href="{% url 'hris-employee-detail' row.employee.id %}">{{ row.employee.user.get_full_name }}</a>
+              <div style="font-size:0.75rem;color:var(--text-tertiary);">{{ row.employee.department.name|default:"—" }}</div>
+            </td>
+            <td>
+              {% if row.status == "in" %}
+                <span class="badge badge--success">Checked in</span>
+              {% elif row.status == "out" %}
+                <span class="badge badge--neutral">Checked out</span>
+              {% elif row.status == "leave" %}
+                <span class="badge badge--warning">On leave</span>
+              {% else %}
+                <span class="badge badge--danger">Not present</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+        {% include "partials/_empty_state.html" with icon="users" title="No direct reports" message="Assign employees to you as their manager to see team attendance and approvals here." action_url="/employees/" action_label="Open directory" %}
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">Direct Reports</h3>
+    <a href="/employees/" class="btn-ghost btn-sm">Directory</a>
+  </div>
+  <div class="card-body" style="padding:0;overflow-x:auto;">
+    {% if my_team %}
+    <table class="data-table">
+      <thead><tr><th>Employee</th><th>Department</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        {% for emp in my_team %}
+        <tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="avatar" style="width:32px;height:32px;font-size:0.7rem;">
+                {% if emp.profile_picture %}<img src="{{ emp.profile_picture.url }}" alt="">{% else %}{{ emp.user.first_name.0 }}{{ emp.user.last_name.0 }}{% endif %}
+              </div>
+              <div>
+                <div style="font-weight:500;">{{ emp.user.get_full_name }}</div>
+                <div style="font-size:0.75rem;color:var(--text-tertiary);">{{ emp.employee_id }}</div>
+              </div>
+            </div>
+          </td>
+          <td>{{ emp.department.name|default:"—" }}</td>
+          <td><span class="badge badge--{% if emp.employment_status == 'active' %}success{% else %}neutral{% endif %}">{{ emp.get_employment_status_display }}</span></td>
+          <td><a href="{% url 'hris-employee-detail' emp.id %}" class="btn-ghost btn-sm">View</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      {% include "partials/_empty_state.html" with icon="users" title="No direct reports assigned" message="HR can assign a manager on each employee profile. Once assigned, your team will show here." %}
+    {% endif %}
+  </div>
+</div>
+
+{% if user_profile and attendance_today %}
+<div style="margin-top:16px;">
+  <div class="dash-page-header" style="margin-bottom:12px;">
+    <div><h2 style="font-size:1.1rem;font-weight:600;">My Attendance</h2></div>
+  </div>
+  {% include "partials/dashboard/_attendance_widget.html" %}
+</div>
+{% endif %}

@@ -1,171 +1,225 @@
 {% extends "base.html" %}
 {% block title %}{{ employee.user.get_full_name }} — HRIS{% endblock %}
-{% block nav_employees %}active{% endblock %}
 {% block page_title %}Employee Profile{% endblock %}
 
 {% block topbar_actions %}
-  <a href="/employees/" class="btn btn-outline btn-sm">← Back to Directory</a>
+  <a href="{% url 'hris-employees' %}" class="btn btn-outline btn-sm">Directory</a>
+  {% if can_edit_profile %}
+  <a href="{% url 'hris-employee-edit' employee.id %}" class="btn btn-primary btn-sm">Edit Profile</a>
+  {% endif %}
 {% endblock %}
 
 {% block content %}
-<style>
-  .profile-hero { display: flex; flex-wrap: wrap; gap: 32px; align-items: center; justify-content: space-between; margin-bottom: 32px; }
-  .profile-identity { display: flex; gap: 24px; align-items: center; }
-  .profile-avatar { width: 88px; height: 88px; border-radius: 20px; background: linear-gradient(135deg, var(--primary), #818cf8); display: grid; place-items: center; font-size: 2rem; font-weight: 700; color: #fff; box-shadow: 0 10px 15px -3px rgba(99,102,241,0.2); overflow: hidden; flex-shrink: 0; }
-  .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
-  .profile-name { font-size: 1.5rem; font-weight: 600; margin-bottom: 4px; color: var(--text-primary); letter-spacing: -0.02em; }
-  .profile-meta { color: var(--text-secondary); font-size: 0.95rem; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-  
-  .badge { padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; text-transform: capitalize; }
-  .badge-success { background: rgba(16, 185, 129, 0.1); color: var(--success); }
-  .badge-warning { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
-  .badge-danger { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
-  .badge-info { background: rgba(99, 102, 241, 0.1); color: var(--primary); }
-
-  .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; padding: 24px; border-top: 1px solid var(--border-subtle); }
-  .detail-item { display: flex; flex-direction: column; gap: 4px; }
-  .detail-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-tertiary); font-weight: 600; }
-  .detail-value { font-size: 0.95rem; color: var(--text-primary); font-weight: 500; }
-
-  /* Tabs */
-  .tabs-nav { display: flex; gap: 32px; border-bottom: 1px solid var(--border-subtle); margin-bottom: 24px; overflow-x: auto; }
-  .tab-link { padding: 12px 0; font-size: 0.9rem; font-weight: 500; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; white-space: nowrap; }
-  .tab-link:hover { color: var(--text-primary); }
-  .tab-link.active { color: var(--primary); border-bottom-color: var(--primary); }
-  .tab-panel { display: none; animation: fadeIn 0.3s ease; }
-  .tab-panel.active { display: block; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-
-  /* Tab Tables */
-  .inner-table { width: 100%; border-collapse: collapse; text-align: left; }
-  .inner-table th { padding: 12px 16px; font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); border-bottom: 1px solid var(--border-subtle); font-weight: 600; }
-  .inner-table td { padding: 14px 16px; font-size: 0.875rem; color: var(--text-primary); border-bottom: 1px solid var(--border-subtle); }
-</style>
-
-<div class="card" style="margin-bottom: 32px;">
-  <div class="card-body" style="padding: 32px 32px 0 32px;">
-    
-    <div class="profile-hero">
-      <div class="profile-identity">
-        <div class="profile-avatar">
+<div class="card" style="margin-bottom:16px;">
+  <div class="card-body">
+    <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:center;justify-content:space-between;">
+      <div style="display:flex;gap:20px;align-items:center;">
+        <div class="avatar" style="width:80px;height:80px;font-size:1.5rem;border-radius:16px;">
           {% if employee.profile_picture %}
-            <img src="{{ employee.profile_picture.url }}" alt="{{ employee.user.get_full_name }}" />
+            <img src="{{ employee.profile_picture.url }}" alt="">
           {% else %}
-            {{ employee.user.first_name.0|upper }}{{ employee.user.last_name.0|upper }}
+            {{ employee.user.first_name.0 }}{{ employee.user.last_name.0 }}
           {% endif %}
         </div>
         <div>
-          <h2 class="profile-name">{{ employee.user.get_full_name }}</h2>
-          <div class="profile-meta">
-            <span>{{ employee.user.email }}</span> &bull; 
-            <span style="font-family: monospace;">{{ employee.employee_id }}</span> &bull;
-            <span class="badge {% if employee.employment_status == 'active' %}badge-success{% elif employee.employment_status == 'on_leave' %}badge-warning{% else %}badge-danger{% endif %}">
+          <h1 style="font-size:1.4rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:6px;">{{ employee.user.get_full_name }}</h1>
+          <div style="font-size:0.9rem;color:var(--text-secondary);display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+            <span>{{ employee.user.email }}</span>
+            <span style="color:var(--text-tertiary);">|</span>
+            <span style="font-family:monospace;">{{ employee.employee_id }}</span>
+            <span class="badge badge--{% if employee.employment_status == 'active' %}success{% elif employee.employment_status == 'on_leave' %}warning{% else %}neutral{% endif %}">
               {{ employee.get_employment_status_display }}
             </span>
           </div>
         </div>
       </div>
-      
-      <div style="display:flex; gap:12px;">
-        <a href="/leaves/?status=pending" class="btn btn-outline">Time Off</a>
-        {% if user.is_hr_admin or user == employee.user or (user.is_manager and employee.manager == user) %}
-          <a href="/employees/{{ employee.id }}/edit/" class="btn btn-primary">Edit Profile</a>
-        {% endif %}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <a href="{% url 'hris-leaves' %}?status=pending" class="btn btn-outline btn-sm">Time Off</a>
+        <a href="{% url 'hris-dashboard' %}" class="btn btn-ghost btn-sm">Dashboard</a>
       </div>
     </div>
 
-    <div class="detail-grid">
-      <div class="detail-item"><span class="detail-label">Department</span><span class="detail-value">{{ employee.department.name|default:"—" }}</span></div>
-      <div class="detail-item"><span class="detail-label">Manager</span><span class="detail-value">{{ employee.manager.get_full_name|default:"—" }}</span></div>
-      <div class="detail-item"><span class="detail-label">Type</span><span class="detail-value">{{ employee.get_employment_type_display }}</span></div>
-      <div class="detail-item"><span class="detail-label">Salary</span><span class="detail-value">₹{{ employee.salary|floatformat:0 }}</span></div>
-      <div class="detail-item"><span class="detail-label">Joined Date</span><span class="detail-value">{{ employee.date_of_joining|date:"M d, Y"|default:"—" }}</span></div>
-      <div class="detail-item"><span class="detail-label">Location</span><span class="detail-value">{{ employee.city|default:"—" }}{% if employee.country %}, {{ employee.country }}{% endif %}</span></div>
+    <div class="dash-grid dash-grid--3" style="margin-top:24px;gap:12px;">
+      <div class="attendance-meta__item">
+        <div class="attendance-meta__label">Department</div>
+        <div class="attendance-meta__value">{{ employee.department.name|default:"Unassigned" }}</div>
+      </div>
+      <div class="attendance-meta__item">
+        <div class="attendance-meta__label">Reporting Manager</div>
+        <div class="attendance-meta__value">{{ employee.manager.get_full_name|default:"—" }}</div>
+      </div>
+      <div class="attendance-meta__item">
+        <div class="attendance-meta__label">Employment Type</div>
+        <div class="attendance-meta__value">{{ employee.get_employment_type_display }}</div>
+      </div>
+      <div class="attendance-meta__item">
+        <div class="attendance-meta__label">Joined</div>
+        <div class="attendance-meta__value">{{ employee.date_of_joining|date:"M d, Y"|default:"—" }}</div>
+      </div>
+      <div class="attendance-meta__item">
+        <div class="attendance-meta__label">Location</div>
+        <div class="attendance-meta__value">{{ employee.city|default:"—" }}{% if employee.country %}, {{ employee.country }}{% endif %}</div>
+      </div>
+      <div class="attendance-meta__item">
+        <div class="attendance-meta__label">Phone</div>
+        <div class="attendance-meta__value">{{ employee.user.phone_number|default:"—" }}</div>
+      </div>
     </div>
   </div>
 </div>
 
-<div class="tabs-nav" id="tabs">
-  <div class="tab-link active" onclick="switchTab('leaves')">Leave History</div>
-  <div class="tab-link" onclick="switchTab('audit')">Audit Trail</div>
-  {% if employee.skills or employee.bio %}<div class="tab-link" onclick="switchTab('about')">About & Skills</div>{% endif %}
+<div class="dash-grid dash-grid--2" style="margin-bottom:16px;">
+  <div class="card">
+    <div class="card-header"><h3 class="card-title">Attendance Summary</h3></div>
+    <div class="card-body">
+      {% if attendance_today %}
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <span style="font-size:0.85rem;color:var(--text-secondary);">Today</span>
+        {% if attendance_today.status == "checked_in" %}
+          <span class="attendance-status attendance-status--in">Checked In</span>
+        {% elif attendance_today.status == "completed" %}
+          <span class="attendance-status attendance-status--done">Day Complete</span>
+        {% else %}
+          <span class="attendance-status attendance-status--out">Not Active</span>
+        {% endif %}
+      </div>
+      <div class="attendance-meta" style="margin-top:0;">
+        <div class="attendance-meta__item">
+          <div class="attendance-meta__label">Check In</div>
+          <div class="attendance-meta__value">{{ attendance_today.check_in_display }}</div>
+        </div>
+        <div class="attendance-meta__item">
+          <div class="attendance-meta__label">Check Out</div>
+          <div class="attendance-meta__value">{{ attendance_today.check_out_display }}</div>
+        </div>
+        <div class="attendance-meta__item">
+          <div class="attendance-meta__label">Hours Today</div>
+          <div class="attendance-meta__value">{{ attendance_today.duration_display }}</div>
+        </div>
+      </div>
+      <p style="margin-top:12px;font-size:0.8rem;color:var(--text-secondary);">30-day attendance rate: <strong>{{ attendance_month_pct }}%</strong></p>
+      {% if user == employee.user and attendance_today.can_check_in or attendance_today.can_check_out %}
+      <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">
+        {% if attendance_today.can_check_in %}
+        <button type="button" class="btn btn-primary btn-sm" onclick="hrisAttendance.checkIn(this)">Check In</button>
+        {% endif %}
+        {% if attendance_today.can_check_out %}
+        <button type="button" class="btn btn-outline btn-sm" onclick="hrisAttendance.checkOut(this)">Check Out</button>
+        {% endif %}
+        <span id="attendance-action-status" style="font-size:0.8rem;color:var(--text-secondary);align-self:center;"></span>
+      </div>
+      {% endif %}
+      {% else %}
+        {% include "partials/_empty_state.html" with icon="clock" title="No attendance data" message="Attendance records will appear after the first check-in." %}
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">Leave Summary</h3>
+      <a href="{% url 'hris-leaves' %}" class="btn-ghost btn-sm">All requests</a>
+    </div>
+    <div class="card-body">
+      <div class="dash-grid dash-grid--3" style="gap:10px;">
+        <div class="attendance-meta__item">
+          <div class="attendance-meta__label">Pending</div>
+          <div class="attendance-meta__value" style="color:var(--warning);">{{ leave_summary.pending }}</div>
+        </div>
+        <div class="attendance-meta__item">
+          <div class="attendance-meta__label">Approved</div>
+          <div class="attendance-meta__value" style="color:var(--success);">{{ leave_summary.approved }}</div>
+        </div>
+        <div class="attendance-meta__item">
+          <div class="attendance-meta__label">Rejected</div>
+          <div class="attendance-meta__value">{{ leave_summary.rejected }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="tabs-nav" id="profile-tabs" style="display:flex;gap:24px;border-bottom:1px solid var(--border-subtle);margin-bottom:16px;">
+  <button type="button" class="btn-ghost btn-sm tab-btn active" data-tab="leaves">Leave History</button>
+  <button type="button" class="btn-ghost btn-sm tab-btn" data-tab="contact">Contact</button>
+  <button type="button" class="btn-ghost btn-sm tab-btn" data-tab="audit">Audit Trail</button>
+  {% if employee.skills or employee.bio %}<button type="button" class="btn-ghost btn-sm tab-btn" data-tab="about">About</button>{% endif %}
 </div>
 
 <div class="tab-panel active" id="tab-leaves">
   <div class="card">
     {% if leave_history %}
     <div style="overflow-x:auto;">
-      <table class="inner-table">
-        <thead><tr><th>Type</th><th>Duration</th><th>Status</th><th>Approver</th><th>Notes</th></tr></thead>
+      <table class="data-table">
+        <thead><tr><th>Type</th><th>Duration</th><th>Status</th><th>Approver</th></tr></thead>
         <tbody>
           {% for leave in leave_history %}
           <tr>
-            <td style="font-weight:500;">{{ leave.get_leave_type_display }}</td>
-            <td>{{ leave.start_date|date:"M d, Y" }} &rarr; {{ leave.end_date|date:"M d, Y" }}</td>
-            <td>
-              <span class="badge {% if leave.status == 'approved' %}badge-success{% elif leave.status == 'pending' %}badge-warning{% else %}badge-danger{% endif %}">
-                {{ leave.status }}
-              </span>
-            </td>
-            <td style="color:var(--text-secondary);">{{ leave.approved_by.get_full_name|default:"—" }}</td>
-            <td style="color:var(--text-tertiary); font-size:0.8rem;">{{ leave.approval_notes|default:"—"|truncatechars:45 }}</td>
+            <td>{{ leave.get_leave_type_display }}</td>
+            <td>{{ leave.start_date|date:"M d, Y" }} – {{ leave.end_date|date:"M d, Y" }}</td>
+            <td><span class="badge badge--{% if leave.status == 'approved' %}success{% elif leave.status == 'pending' %}warning{% elif leave.status == 'rejected' %}danger{% else %}neutral{% endif %}">{{ leave.get_status_display }}</span></td>
+            <td>{{ leave.approved_by.get_full_name|default:"—" }}</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
     {% else %}
-    <div style="padding:40px; text-align:center; color:var(--text-secondary);">No leave history available.</div>
+      {% include "partials/_empty_state.html" with icon="calendar" title="No leave history" message="Leave requests submitted by this employee will appear here." %}
     {% endif %}
   </div>
 </div>
 
-<div class="tab-panel" id="tab-audit">
+<div class="tab-panel" id="tab-contact" style="display:none;">
+  <div class="card">
+    <div class="card-body">
+      <div class="dash-grid dash-grid--2" style="gap:16px;">
+        <div><div class="attendance-meta__label">Email</div><div class="attendance-meta__value">{{ employee.user.email }}</div></div>
+        <div><div class="attendance-meta__label">Phone</div><div class="attendance-meta__value">{{ employee.user.phone_number|default:"—" }}</div></div>
+        <div><div class="attendance-meta__label">Address</div><div class="attendance-meta__value">{{ employee.address|default:"—" }}</div></div>
+        <div><div class="attendance-meta__label">Postal Code</div><div class="attendance-meta__value">{{ employee.postal_code|default:"—" }}</div></div>
+        {% if user.is_hr_admin %}
+        <div><div class="attendance-meta__label">Salary</div><div class="attendance-meta__value">{{ employee.salary }}</div></div>
+        <div><div class="attendance-meta__label">Bonus</div><div class="attendance-meta__value">{{ employee.bonus }}</div></div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="tab-panel" id="tab-audit" style="display:none;">
   <div class="card">
     {% if audit_history %}
     <div style="overflow-x:auto;">
-      <table class="inner-table">
-        <thead><tr><th>Timestamp</th><th>Action</th><th>Initiated By</th><th>Changes Recorded</th></tr></thead>
+      <table class="data-table">
+        <thead><tr><th>When</th><th>Action</th><th>By</th><th>Changes</th></tr></thead>
         <tbody>
           {% for log in audit_history %}
           <tr>
-            <td style="font-size:0.8rem; color:var(--text-secondary);">{{ log.timestamp|date:"M d, Y H:i" }}</td>
-            <td><span class="badge badge-info">{{ log.action }}</span></td>
+            <td style="font-size:0.8rem;color:var(--text-secondary);">{{ log.timestamp|date:"M d, Y H:i" }}</td>
+            <td><span class="badge badge--neutral">{{ log.action }}</span></td>
             <td>{{ log.user.email|default:"System" }}</td>
-            <td style="font-family:monospace; font-size:0.75rem; color:var(--text-secondary);">
-              {% if log.changes %}
-                {% for key, val in log.changes.items %}
-                  <div><strong style="color:var(--text-primary);">{{ key }}</strong>: {{ val }}</div>
-                {% endfor %}
-              {% else %}—{% endif %}
-            </td>
+            <td style="font-size:0.75rem;color:var(--text-secondary);max-width:280px;">{% if log.changes %}{{ log.changes }}{% else %}—{% endif %}</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
     {% else %}
-    <div style="padding:40px; text-align:center; color:var(--text-secondary);">No audit records available.</div>
+      {% include "partials/_empty_state.html" with icon="doc" title="No audit records" message="Profile changes will be logged here automatically." %}
     {% endif %}
   </div>
 </div>
 
 {% if employee.skills or employee.bio %}
-<div class="tab-panel" id="tab-about">
+<div class="tab-panel" id="tab-about" style="display:none;">
   <div class="card">
     <div class="card-body">
-      {% if employee.bio %}
-        <h4 style="font-size:0.875rem; color:var(--text-secondary); margin-bottom:8px; text-transform:uppercase;">Biography</h4>
-        <p style="margin-bottom:24px; line-height:1.6;">{{ employee.bio }}</p>
-      {% endif %}
-      
-      {% if employee.skills %}
-        <h4 style="font-size:0.875rem; color:var(--text-secondary); margin-bottom:12px; text-transform:uppercase;">Skills</h4>
-        <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          {% for skill in employee.skills.split:";," %}
-            <span class="badge badge-info" style="font-size:0.8rem; padding:6px 12px;">{{ skill|strip }}</span>
-          {% endfor %}
-        </div>
+      {% if employee.bio %}<p style="line-height:1.6;margin-bottom:16px;">{{ employee.bio }}</p>{% endif %}
+      {% if skills_list %}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        {% for skill in skills_list %}<span class="badge badge--neutral">{{ skill }}</span>{% endfor %}
+      </div>
       {% endif %}
     </div>
   </div>
@@ -173,11 +227,14 @@
 {% endif %}
 
 <script>
-function switchTab(name) {
-  document.querySelectorAll('.tab-link').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  event.target.classList.add('active');
-  document.getElementById('tab-' + name).classList.add('active');
-}
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+    btn.classList.add('active');
+    const panel = document.getElementById('tab-' + btn.dataset.tab);
+    if (panel) panel.style.display = 'block';
+  });
+});
 </script>
 {% endblock %}

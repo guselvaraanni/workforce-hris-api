@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
@@ -5,255 +6,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="csrf-token" content="{{ csrf_token }}" />
   <title>{% block title %}HRIS Platform{% endblock %}</title>
-  
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  
-  <style>
-    /* GLOBAL CSS VARIABLES & BASE */
-    :root, [data-theme="light"] {
-      --bg-app: #f8fafc;
-      --bg-surface: #ffffff;
-      --bg-sidebar: #0f172a;
-      --bg-secondary: #f1f5f9;
-      --bg-tertiary: #e2e8f0;
-      --border: #cbd5e1;
-      --border-subtle: #e2e8f0;
-      --border-strong: #cbd5e1;
-      --text-primary: #0f172a;
-      --text-secondary: #64748b;
-      --text-tertiary: #94a3b8;
-      --text-sidebar: #94a3b8;
-      --text-sidebar-hover: #ffffff;
-      --primary: #4f46e5;
-      --primary-hover: #4338ca;
-      --danger: #ef4444;
-      --success: #10b981;
-      --warning: #f59e0b;
-    }
-
-    [data-theme="dark"] {
-      --bg-app: #0e1015;
-      --bg-surface: #16181d;
-      --bg-sidebar: #0a0c10;
-      --bg-secondary: #1f2937;
-      --bg-tertiary: #374151;
-      --border: #4b5563;
-      --border-subtle: #2c313d;
-      --border-strong: #3f4654;
-      --text-primary: #f9fafb;
-      --text-secondary: #9ca3af;
-      --text-tertiary: #6b7280;
-      --text-sidebar: #9ca3af;
-      --text-sidebar-hover: #ffffff;
-      --primary: #6366f1;
-      --primary-hover: #818cf8;
-      --danger: #f87171;
-      --success: #34d399;
-      --warning: #fbbf24;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Inter', sans-serif; background-color: var(--bg-app); color: var(--text-primary); min-height: 100vh; overflow-x: hidden; }
-    a { text-decoration: none; color: inherit; }
-
-    /* LAYOUT ARCHITECTURE */
-    .layout { display: flex; min-height: 100vh; width: 100%; }
-    
-    .layout__sidebar { width: 260px; background-color: var(--bg-sidebar); display: flex; flex-direction: column; border-right: 1px solid var(--border-subtle); transition: transform 0.3s ease; z-index: 50; }
-    .layout__main { flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
-
-    /* SIDEBAR */
-    .sidebar__header { padding: 24px; border-bottom: 1px solid rgba(255,255,255,0.05); }
-    .sidebar__brand { display: flex; align-items: center; gap: 12px; color: #fff; font-weight: 600; letter-spacing: -0.02em; }
-    .sidebar__logo-icon { width: 32px; height: 32px; background: var(--primary); border-radius: 8px; display: grid; place-items: center; font-size: 0.85rem; }
-    .sidebar__brand-title { font-size: 1.1rem; }
-    .sidebar__brand-subtitle { font-size: 0.75rem; color: #64748b; font-weight: 400; }
-    
-    .sidebar__nav { flex: 1; padding: 24px 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
-    .sidebar__section { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #475569; font-weight: 600; margin: 16px 0 8px 8px; }
-    
-    .sidebar__link { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; color: var(--text-sidebar); font-size: 0.875rem; font-weight: 500; transition: all 0.2s; }
-    .sidebar__link:hover { background: rgba(255,255,255,0.05); color: var(--text-sidebar-hover); }
-    .sidebar__link.active { background: rgba(99, 102, 241, 0.15); color: #818cf8; }
-    
-    .sidebar__footer { padding: 20px 16px 24px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 10px; }
-    .sidebar__user-name { display: block; font-size: 0.875rem; font-weight: 600; color: #fff; margin-bottom: 2px; }
-    .sidebar__user-role { display: block; font-size: 0.75rem; color: #64748b; margin-bottom: 0; }
-    .btn-logout { width: 100%; justify-content: center; }
-
-    /* HEADER & MAIN CONTENT */
-.layout__header { height: 64px; background: var(--bg-surface); border-bottom: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between; padding: 0 26px; flex-shrink: 0; }
-    .topbar__eyebrow { font-size: 0.72rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
-    .topbar__title { font-size: 1.12rem; font-weight: 700; color: var(--text-primary); margin: 0; letter-spacing: -0.02em; }
-
-    .topbar__actions { display: flex; align-items: center; gap: 12px; }
-    .layout__content { flex: 1; overflow-y: auto; padding: 20px 24px 28px; background: var(--bg-app); }
-
-    /* SHARED UI COMPONENTS (Buttons, Cards, Inputs) */
-    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 16px; border-radius: 6px; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 0.2s; border: 1px solid transparent; }
-    .btn-primary { background: var(--primary); color: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-    .btn-primary:hover { background: var(--primary-hover); }
-    .btn-outline { background: transparent; border-color: var(--border-strong); color: var(--text-primary); }
-    .btn-outline:hover { background: var(--bg-surface); }
-    .badge-neutral { background: rgba(148,163,184,0.12); color: var(--text-secondary); }
-    .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
-    .btn-icon { width: 36px; height: 36px; padding: 0; background: transparent; border: 1px solid var(--border-subtle); color: var(--text-secondary); border-radius: 8px; display: grid; place-items: center; }
-    .btn-icon:hover { background: var(--bg-surface); color: var(--text-primary); border-color: var(--border-strong); }
-
-    .card { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-    .card-header { padding: 20px 24px; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; }
-    .card-title { font-size: 1.125rem; font-weight: 600; margin: 0; color: var(--text-primary); }
-    .card-body { padding: 24px; }
-
-    .alert { padding: 12px 16px; border-radius: 8px; font-size: 0.875rem; font-weight: 500; margin-bottom: 24px; display: flex; align-items: center; gap: 8px; }
-    .alert--success { background: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.2); }
-    .alert--error { background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2); }
-
-    /* MOBILE TOGGLE */
-    #sidebar-toggle { display: none; }
-    @media (max-width: 1024px) {
-      .layout__sidebar { position: fixed; left: 0; top: 0; bottom: 0; transform: translateX(-100%); }
-      .layout__sidebar.visible { transform: translateX(0); box-shadow: 0 0 50px rgba(0,0,0,0.5); }
-      #sidebar-toggle { display: grid; }
-      .layout__header { padding: 0 20px; }
-      .layout__content { padding: 20px; }
-    }
-  </style>
+  <link rel="stylesheet" href="{% static 'css/hris.css' %}">
+  {% block extra_css %}{% endblock %}
 </head>
-<body>
+<body data-logout-url="{% url 'logout' %}">
   <div class="layout">
-    
-    <aside class="layout__sidebar" id="app-sidebar">
-      <div class="sidebar__header">
-        <div class="sidebar__brand">
-          <span class="sidebar__logo-icon">HR</span>
-          <div>
-            <div class="sidebar__brand-title">Nexus HRMS</div>
-            <div class="sidebar__brand-subtitle">Workforce OS</div>
-          </div>
-        </div>
-      </div>
-      
-      <nav class="sidebar__nav">
-        <div class="sidebar__section">Main Workspace</div>
-        <a href="/dashboard/" class="sidebar__link {% block nav_dashboard %}{% endblock %}">
-          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg> Dashboard
-        </a>
-        <a href="/employees/" class="sidebar__link {% block nav_employees %}{% endblock %}">
-          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg> Directory
-        </a>
-        <a href="/departments/" class="sidebar__link {% block nav_departments %}{% endblock %}">
-          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg> Departments
-        </a>
-        <a href="/leaves/" class="sidebar__link {% block nav_leaves %}{% endblock %}">
-          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg> Time Off
-        </a>
-
-        {% if user.is_hr_admin %}
-        <div class="sidebar__section">System Admin</div>
-        <a href="/uploads/" class="sidebar__link {% block nav_uploads %}{% endblock %}">
-          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg> Bulk Imports
-        </a>
-        <a href="/audit/" class="sidebar__link {% block nav_audit %}{% endblock %}">
-          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg> Audit Logs
-        </a>
-        {% endif %}
-      </nav>
-
-      <div class="sidebar__footer">
-        {% if user.is_authenticated %}
-        <div class="sidebar__user">
-          <span class="sidebar__user-name">{{ user.get_full_name|default:user.email }}</span>
-          <span class="sidebar__user-role">
-            {% if user.is_hr_admin %}System Admin{% elif user.is_manager %}Manager{% else %}Employee{% endif %}
-          </span>
-        </div>
-        <a href="{% url 'logout' %}" class="btn btn-outline btn-sm btn-logout" onclick="logoutAction(event)">Sign Out</a>
-        {% endif %}
-      </div>
-    </aside>
-
+    {% include "partials/_sidebar.html" %}
     <div class="layout__main">
-      <header class="layout__header">
-        <div style="display:flex;align-items:center;gap:16px;">
-          <button class="btn-icon" id="sidebar-toggle" type="button" aria-label="Toggle navigation">
-            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
-          </button>
-          <div>
-            <div class="topbar__eyebrow">Workspace</div>
-            <h2 class="topbar__title">{% block page_title %}Dashboard{% endblock %}</h2>
-          </div>
-        </div>
-        
-        <div class="topbar__actions">
-          {% block topbar_actions %}{% endblock %}
-          {% if user.is_authenticated and user.has_profile %}
-            <a href="/employees/{{ user.profile.id }}/edit/" class="btn btn-outline btn-sm">My Profile</a>
-          {% endif %}
-          <button id="theme-toggle" class="btn-icon" type="button" aria-label="Toggle theme">🌙</button>
-        </div>
-      </header>
-
+      {% include "partials/_topbar.html" %}
       <main class="layout__content">
         {% if messages %}
           {% for msg in messages %}
-            <div class="alert {% if msg.tags == 'error' %}alert--error{% else %}alert--success{% endif %}">
-              {{ msg }}
-            </div>
+            <div class="alert {% if msg.tags == 'error' %}alert--error{% else %}alert--success{% endif %}">{{ msg }}</div>
           {% endfor %}
         {% endif %}
-        
         {% block content %}{% endblock %}
       </main>
     </div>
   </div>
-
-  <script>
-    const sidebar = document.getElementById('app-sidebar');
-    const sidebarToggle = document.getElementById('sidebar-toggle');
-    const themeToggle = document.getElementById('theme-toggle');
-    const themeKey = 'hris_theme';
-
-    const applyTheme = (theme) => {
-      document.documentElement.setAttribute('data-theme', theme);
-      if (themeToggle) themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
-    };
-
-    const storedTheme = localStorage.getItem(themeKey) || 'dark';
-    applyTheme(storedTheme);
-
-    if (themeToggle) {
-      themeToggle.addEventListener('click', () => {
-        const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-        localStorage.setItem(themeKey, next);
-        applyTheme(next);
-      });
-    }
-
-    if (sidebarToggle) {
-      sidebarToggle.addEventListener('click', () => {
-        sidebar.classList.toggle('visible');
-      });
-    }
-
-    window.addEventListener('resize', () => {
-      if (window.innerWidth > 1180) {
-        sidebar.classList.remove('visible');
-      }
-    });
-
-    function logoutAction(event) {
-      if (event) event.preventDefault();
-      fetch('{% url "logout" %}', {
-        method: 'GET',
-        credentials: 'include'
-      }).finally(() => {
-        try { localStorage.clear(); } catch (err) {}
-        window.location.href = '/';
-      });
-    }
-  </script>
+  <script src="{% static 'js/hris.js' %}"></script>
+  {% block extra_js %}{% endblock %}
 </body>
 </html>

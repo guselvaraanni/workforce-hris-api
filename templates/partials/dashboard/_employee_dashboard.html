@@ -1,0 +1,179 @@
+<div class="dash-page-header">
+  <div>
+    <h1>Employee Overview</h1>
+    <p>Your attendance, leave balance, and workspace activity for {{ today_date|date:"M j, Y" }}.</p>
+  </div>
+  {% if user_profile %}
+  <a href="{% url 'hris-employee-detail' user_profile.id %}" class="btn btn-outline btn-sm">View full profile</a>
+  {% endif %}
+</div>
+
+{% if not user_profile %}
+  {% include "partials/_empty_state.html" with icon="users" title="Profile not linked" message="Your account does not have an employee profile yet. Contact HR to complete onboarding." action_url="/employees/" action_label="Browse directory" %}
+{% else %}
+
+<div class="dash-grid dash-grid--2-1" style="margin-bottom:16px;">
+  <div class="dash-grid" style="gap:16px;">
+    {% include "partials/dashboard/_attendance_widget.html" %}
+
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Leave Balance</h3>
+        <a href="/leaves/" class="btn-ghost btn-sm">Manage</a>
+      </div>
+      <div class="card-body">
+        <div class="dash-grid dash-grid--3" style="gap:12px;">
+          <div class="attendance-meta__item">
+            <div class="attendance-meta__label">Pending</div>
+            <div class="attendance-meta__value" style="color:var(--warning);">{{ leave_summary.pending }}</div>
+          </div>
+          <div class="attendance-meta__item">
+            <div class="attendance-meta__label">Approved</div>
+            <div class="attendance-meta__value" style="color:var(--success);">{{ leave_summary.approved }}</div>
+          </div>
+          <div class="attendance-meta__item">
+            <div class="attendance-meta__label">Rejected</div>
+            <div class="attendance-meta__value">{{ leave_summary.rejected }}</div>
+          </div>
+        </div>
+        {% if upcoming_leave %}
+        <p style="margin-top:14px;font-size:0.85rem;color:var(--text-secondary);">
+          Next approved leave: <strong>{{ upcoming_leave.start_date|date:"M j" }} – {{ upcoming_leave.end_date|date:"M j" }}</strong> ({{ upcoming_leave.leave_type|title }})
+        </p>
+        {% else %}
+        <p style="margin-top:14px;font-size:0.85rem;color:var(--text-tertiary);">No upcoming approved leave scheduled.</p>
+        {% endif %}
+        {% if attendance_month_pct is not None %}
+        <p style="margin-top:8px;font-size:0.8rem;color:var(--text-secondary);">30-day attendance rate: <strong>{{ attendance_month_pct }}%</strong></p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="dash-grid" style="gap:16px;">
+    <div class="card">
+      <div class="card-header"><h3 class="card-title">Profile</h3></div>
+      <div class="card-body">
+        <div style="display:flex;gap:14px;align-items:center;">
+          <div class="avatar" style="width:52px;height:52px;font-size:1rem;">
+            {% if user_profile.profile_picture %}
+              <img src="{{ user_profile.profile_picture.url }}" alt="">
+            {% else %}
+              {{ user_profile.user.first_name.0 }}{{ user_profile.user.last_name.0 }}
+            {% endif %}
+          </div>
+          <div>
+            <div style="font-weight:600;">{{ user_profile.user.get_full_name }}</div>
+            <div style="font-size:0.8rem;color:var(--text-secondary);">{{ user_profile.employee_id }}</div>
+            <div style="font-size:0.8rem;color:var(--text-tertiary);">{{ user_profile.department.name|default:"Unassigned" }} · {{ user_profile.get_employment_type_display }}</div>
+          </div>
+        </div>
+        <a href="{% url 'hris-employee-edit' user_profile.id %}" class="btn btn-outline btn-sm" style="margin-top:16px;width:100%;">Edit profile</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h3 class="card-title">Announcements</h3></div>
+      <div class="card-body">
+        {% include "partials/_empty_state.html" with icon="doc" title="No announcements" message="Company-wide announcements will appear here when published by HR." %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h3 class="card-title">Upcoming Holidays</h3></div>
+      <div class="card-body">
+        {% include "partials/_empty_state.html" with icon="calendar" title="Holiday calendar" message="Public holiday calendar integration is planned. Check with HR for official dates." %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="dash-grid dash-grid--2">
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">Quick Leave Request</h3>
+    </div>
+    <div class="card-body">
+      <form id="quickLeaveForm" style="display:flex;flex-direction:column;gap:12px;" onsubmit="return false;">
+        <div>
+          <label style="font-size:0.75rem;color:var(--text-secondary);">Type</label>
+          <select id="quick_leave_type" class="quick-input">
+            <option value="annual">Annual</option>
+            <option value="sick">Sick</option>
+            <option value="personal">Personal</option>
+            <option value="maternity">Maternity</option>
+            <option value="paternity">Paternity</option>
+            <option value="unpaid">Unpaid</option>
+          </select>
+        </div>
+        <div class="dash-grid dash-grid--2" style="gap:10px;">
+          <div>
+            <label style="font-size:0.75rem;color:var(--text-secondary);">Start</label>
+            <input type="date" id="quick_start_date" class="quick-input">
+          </div>
+          <div>
+            <label style="font-size:0.75rem;color:var(--text-secondary);">End</label>
+            <input type="date" id="quick_end_date" class="quick-input">
+          </div>
+        </div>
+        <div>
+          <label style="font-size:0.75rem;color:var(--text-secondary);">Reason</label>
+          <textarea id="quick_reason" class="quick-input" rows="2" placeholder="Brief reason"></textarea>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span id="quick-leave-status" style="font-size:0.8rem;color:var(--text-secondary);"></span>
+          <button type="button" class="btn btn-primary btn-sm" onclick="submitQuickLeave()">Submit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">Recent Activity</h3>
+      <a href="/leaves/" class="btn-ghost btn-sm">All leaves</a>
+    </div>
+    <div class="card-body" style="padding:0;">
+      {% if recent_my_leaves %}
+      <table class="data-table">
+        <thead><tr><th>Type</th><th>Dates</th><th>Status</th></tr></thead>
+        <tbody>
+          {% for leave in recent_my_leaves %}
+          <tr>
+            <td>{{ leave.get_leave_type_display }}</td>
+            <td>{{ leave.start_date|date:"M j" }} – {{ leave.end_date|date:"M j" }}</td>
+            <td><span class="badge badge--{% if leave.status == 'approved' %}success{% elif leave.status == 'pending' %}warning{% elif leave.status == 'rejected' %}danger{% else %}neutral{% endif %}">{{ leave.get_status_display }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+        {% include "partials/_empty_state.html" with icon="calendar" title="No leave history" message="Submit your first leave request using the form beside this panel." %}
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% if attendance_history %}
+<div class="card" style="margin-top:16px;">
+  <div class="card-header"><h3 class="card-title">Attendance History</h3></div>
+  <div class="card-body" style="padding:0;overflow-x:auto;">
+    <table class="data-table">
+      <thead><tr><th>Date</th><th>Check In</th><th>Check Out</th><th>Duration</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for rec in attendance_history %}
+        <tr>
+          <td>{{ rec.date|date:"D, M j" }}</td>
+          <td>{% if rec.check_in %}{{ rec.check_in|time:"g:i A" }}{% else %}—{% endif %}</td>
+          <td>{% if rec.check_out %}{{ rec.check_out|time:"g:i A" }}{% else %}—{% endif %}</td>
+          <td>{{ rec.duration_display }}</td>
+          <td><span class="badge badge--neutral">{{ rec.get_status_display }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% endif %}

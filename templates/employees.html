@@ -108,7 +108,7 @@
           <td><span style="font-size:0.8rem; color:var(--text-secondary);">{{ emp.get_employment_type_display }}</span></td>
           <td><span style="font-size:0.8rem; color:var(--text-secondary);">{{ emp.date_of_joining|date:"M d, Y"|default:"—" }}</span></td>
           <td style="text-align:right;">
-            <a href="/employees/{{ emp.id }}/" class="btn btn-outline btn-sm">View Profile</a>
+            <a href="{% url 'hris-employee-detail' emp.id %}" class="btn btn-outline btn-sm">View Profile</a>
           </td>
         </tr>
         {% endfor %}

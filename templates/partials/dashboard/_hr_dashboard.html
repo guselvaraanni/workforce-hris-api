@@ -1,0 +1,97 @@
+<div class="dash-page-header">
+  <div>
+    <h1>HR Operations</h1>
+    <p>Workforce KPIs, department analytics, and compliance activity.</p>
+  </div>
+  <a href="{% url 'hris-employee-add' %}" class="btn btn-primary btn-sm">
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+    Add Employee
+  </a>
+</div>
+
+<div class="dash-grid dash-grid--4" style="margin-bottom:16px;">
+  <div class="card kpi-card">
+    <div class="kpi-card__icon">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+    </div>
+    <div class="kpi-card__label">Active Employees</div>
+    <div class="kpi-card__value">{{ total_employees }}</div>
+  </div>
+  <div class="card kpi-card">
+    <div class="kpi-card__icon">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 21h18M9 21V9l6-4v16"/></svg>
+    </div>
+    <div class="kpi-card__label">Departments</div>
+    <div class="kpi-card__value">{{ total_departments }}</div>
+  </div>
+  <div class="card kpi-card">
+    <div class="kpi-card__icon">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+    </div>
+    <div class="kpi-card__label">Pending Leaves</div>
+    <div class="kpi-card__value">{{ pending_leaves }}</div>
+  </div>
+  <div class="card kpi-card">
+    <div class="kpi-card__icon">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+    </div>
+    <div class="kpi-card__label">Bulk Upload Jobs</div>
+    <div class="kpi-card__value">{{ recent_uploads }}</div>
+    <div class="kpi-card__meta">Completed or processing</div>
+  </div>
+</div>
+
+<div class="dash-grid dash-grid--2">
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">Headcount by Department</h3>
+      <a href="/departments/" class="btn-ghost btn-sm">View all</a>
+    </div>
+    <div class="card-body">
+      {% if dept_breakdown %}
+        {% with max_hc=dept_breakdown.0.headcount %}
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          {% for dept in dept_breakdown %}
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:0.875rem;margin-bottom:6px;">
+              <span>{{ dept.name }}</span>
+              <span style="color:var(--text-secondary);">{{ dept.headcount }} employees</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-bar__fill" style="width:{% if max_hc %}{% widthratio dept.headcount max_hc 100 %}{% else %}0{% endif %}%;"></div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endwith %}
+      {% else %}
+        {% include "partials/_empty_state.html" with icon="users" title="No departments" message="Create departments to organize headcount analytics." action_url="/departments/" action_label="Manage departments" %}
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">Recent Audit Activity</h3>
+      <a href="/audit/" class="btn-ghost btn-sm">Full log</a>
+    </div>
+    <div class="card-body" style="max-height:380px;overflow-y:auto;">
+      {% if recent_audit %}
+      <ul class="timeline">
+        {% for log in recent_audit %}
+        <li>
+          <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:4px;">
+            <strong style="font-size:0.85rem;">{{ log.user.email|default:"System" }}</strong>
+            <span style="font-size:0.72rem;color:var(--text-tertiary);">{{ log.timestamp|timesince }} ago</span>
+          </div>
+          <span class="badge badge--neutral">{{ log.action }}</span>
+          <span style="color:var(--text-secondary);font-size:0.8rem;"> {{ log.content_type }} — {{ log.object_str|truncatechars:40 }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+        {% include "partials/_empty_state.html" with icon="doc" title="No audit activity" message="System changes will be recorded here automatically." action_url="/audit/" action_label="Open audit log" %}
+      {% endif %}
+    </div>
+  </div>
+</div>

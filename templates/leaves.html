@@ -95,7 +95,7 @@
       {% for leave in leaves %}
       <tr>
         <td>
-          <a href="/employees/{{ leave.employee.id }}/" style="font-weight:500; color:var(--text-primary);">{{ leave.employee.user.get_full_name }}</a><br>
+          <a href="{% url 'hris-employee-detail' leave.employee.id %}" style="font-weight:500; color:var(--text-primary);">{{ leave.employee.user.get_full_name }}</a><br>
           <small style="color:var(--text-secondary)">{{ leave.employee.department.name|default:"—" }}</small>
         </td>
         <td>
@@ -118,7 +118,7 @@
             <button type="button" class="btn btn-outline btn-sm" onclick="processLeaveRequest('{{ leave.id }}', 'approve')">Approve</button>
             <button type="button" class="btn btn-outline btn-sm" onclick="processLeaveRequest('{{ leave.id }}', 'reject')">Reject</button>
           {% else %}
-            <a href="/employees/{{ leave.employee.id }}/" class="btn btn-outline btn-sm">View</a>
+            <a href="{% url 'hris-employee-detail' leave.employee.id %}" class="btn btn-outline btn-sm">View</a>
           {% endif %}
         </td>
         {% endif %}

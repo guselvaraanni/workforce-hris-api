@@ -1,0 +1,42 @@
+{% if user.is_authenticated %}
+<div class="profile-menu">
+  <button type="button" class="profile-trigger" id="profile-trigger" aria-haspopup="true" aria-expanded="false">
+    <div class="avatar">
+      {% if layout_profile and layout_profile.profile_picture %}
+        <img src="{{ layout_profile.profile_picture.url }}" alt="">
+      {% else %}
+        {{ layout_initials }}
+      {% endif %}
+    </div>
+    <div class="profile-trigger__text">
+      <div class="profile-trigger__name">{{ layout_display_name }}</div>
+      <div class="profile-trigger__role">{{ layout_role_label }}</div>
+    </div>
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+  </button>
+  <div class="profile-dropdown" id="profile-dropdown">
+    <div class="profile-dropdown__header">
+      <strong>{{ layout_display_name }}</strong>
+      <span>{{ layout_role_label }}</span>
+    </div>
+    {% if layout_profile %}
+    <a href="{% url 'hris-my-profile' %}">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      View Profile
+    </a>
+    <a href="{% url 'hris-employee-edit' layout_profile.id %}">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      Edit Profile
+    </a>
+    {% endif %}
+    <a href="{% if layout_profile %}{% url 'hris-employee-edit' layout_profile.id %}{% else %}{% url 'hris-dashboard' %}{% endif %}">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      Account Settings
+    </a>
+    <button type="button" class="danger" onclick="logoutAction(event)">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      Logout
+    </button>
+  </div>
+</div>
+{% endif %}
