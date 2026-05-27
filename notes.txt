@@ -417,11 +417,71 @@ To force pytest to use the venv interpreter:
     Serializers: PascalCase with Serializer suffix
 * New endpoints go in employees/views.py and are routed via the DefaultRouter
   in employees/urls.py.
-* New templates extend base.html. Set the relevant
-  {% block nav_<page> %}active{% endblock %} so the sidebar highlights.
+* New templates extend base.html. Sidebar active state uses request.path in
+  templates/partials/_sidebar.html (no nav_* blocks required).
 
 --------------------------------------------------------------------------------
-14. Final reminder
+15. Enterprise UI & attendance (May 2026)
+--------------------------------------------------------------------------------
+
+ATTENDANCE
+  Model: employees.models.AttendanceRecord (migration 0002_attendancerecord)
+  Service: employees/utils/attendance_service.py
+  API: /api/v1/attendance/ (ViewSet)
+       POST check_in/  POST check_out/  GET today/  GET week_summary/
+  Rules: one record per employee per local calendar day; duplicate check-in/out
+         blocked; check-out requires prior check-in; uses TIME_ZONE.
+
+DASHBOARDS (role-based partials)
+  templates/dashboard.html routes by role:
+    HR Admin  -> partials/dashboard/_hr_dashboard.html
+    Manager   -> partials/dashboard/_manager_dashboard.html
+    Employee  -> partials/dashboard/_employee_dashboard.html
+  Context: employees/dashboard_context.py via DashboardView
+
+LAYOUT / THEME
+  static/css/hris.css   — design tokens, sidebar, topbar, cards
+  static/js/hris.js     — theme toggle, sidebar collapse/mobile, profile menu,
+                          attendance actions, quick leave submit
+  partials: _sidebar.html, _topbar.html, _profile_dropdown.html,
+            _empty_state.html
+
+SEED DATA
+  Demo manager: manager@example.com / TestPass123! (with profile + team assign)
+
+--------------------------------------------------------------------------------
+16. Production stabilization (May 2026)
+--------------------------------------------------------------------------------
+
+DRF URL COLLISION FIX (critical)
+  Problem: {% url 'employee-detail' %} resolved to /api/v1/employees/{id}/
+           because DRF router used the same name as UI routes.
+  Fix:
+    - UI routes renamed: hris-employee-detail, hris-employee-edit, hris-dashboard, etc.
+    - API routes namespaced: reverse('api:employee-detail', ...)
+    - DEFAULT_RENDERER_CLASSES = JSONRenderer only (no browsable API in browser)
+    - ApiBrowserRedirectMiddleware: HTML visits to /api/v1/employees/{id}/ → /employees/{id}/
+
+PROFILE FLOW
+  /profile/ → MyProfileRedirectView → hris-employee-detail (current user)
+  Dropdown "View Profile" → hris-my-profile
+  employee_detail.html: full HRIS profile (attendance, leave, contact, tabs)
+
+TESTS
+  tests/test_navigation.py — URL routing, middleware redirect, HTML profile page
+  tests/test_attendance.py — check-in/out service + API
+
+--------------------------------------------------------------------------------
+17. README screenshots (May 2026)
+--------------------------------------------------------------------------------
+
+All 16 images live in screenshots/ and are embedded in README.md under "UI Screens"
+with captions. See README "Screenshot index (quick reference)" table for file → section
+mapping. No Celery/Redis/Docker UI shots in this batch; README documents threading
+CSV flow and Docker quick start in prose.
+
+--------------------------------------------------------------------------------
+18. Final reminder
 --------------------------------------------------------------------------------
 
 WHENEVER YOU ADD A FEATURE, FIX A BUG, OR REFACTOR ANYTHING:

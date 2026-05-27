@@ -1156,3 +1156,128 @@ careful reviewer will spot in five minutes, and the **frontend↔backend
 integration is far thinner than the file count suggests** (most APIs are
 not reached by the UI). Fix the §9.1 list and the codebase becomes a
 genuine showcase project.
+
+---
+
+## 12. Enterprise UI & Attendance Implementation (May 2026)
+
+### 12.1 Summary
+
+A production-oriented dashboard overhaul was implemented: role-based
+dashboards, centralized theme/CSS, collapsible sidebar, header profile
+dropdown, and a full attendance subsystem (model + service + API + UI).
+
+### 12.2 Attendance architecture
+
+| Layer | Location |
+|---|---|
+| Model | `employees/models.py` → `AttendanceRecord` |
+| Migration | `employees/migrations/0002_attendancerecord.py` |
+| Business logic | `employees/utils/attendance_service.py` |
+| API | `AttendanceViewSet` in `employees/views.py` |
+| Routes | `router.register('attendance', …)` in `employees/urls.py` |
+| Tests | `tests/test_attendance.py` |
+
+**Endpoints (authenticated):**
+
+- `GET /api/v1/attendance/` — list (scoped by role)
+- `POST /api/v1/attendance/check_in/`
+- `POST /api/v1/attendance/check_out/`
+- `GET /api/v1/attendance/today/`
+- `GET /api/v1/attendance/week_summary/`
+
+**Validation:** unique `(employee, date)`; no duplicate check-in; check-out
+only after check-in; times use `django.utils.timezone`.
+
+### 12.3 Template structure
+
+```
+templates/
+  base.html                          # loads static/css/hris.css + hris.js
+  dashboard.html                     # role router
+  partials/
+    _sidebar.html
+    _topbar.html
+    _profile_dropdown.html
+    _empty_state.html
+    dashboard/
+      _hr_dashboard.html
+      _manager_dashboard.html
+      _employee_dashboard.html
+      _attendance_widget.html
+```
+
+**Context:** `employees/dashboard_context.py` + `employees/context_processors.hris_layout`.
+
+### 12.4 Role dashboards
+
+- **Employee:** attendance widget, leave balance, quick leave, profile,
+  activity, placeholders (announcements/holidays), attendance history.
+- **Manager:** KPIs, pending approvals, team attendance today, direct reports
+  (with empty states when no team), personal attendance if profile exists.
+- **HR Admin:** workforce KPIs, department headcount chart, audit timeline.
+
+### 12.5 Theme & responsiveness
+
+- CSS variables in `static/css/hris.css` for light/dark (`data-theme` on `<html>`).
+- Sidebar: collapse on desktop, overlay on ≤1024px, high-contrast Sign Out.
+- Topbar: notifications placeholder, SVG theme toggle, avatar dropdown (View/Edit
+  Profile, Account Settings, Logout).
+
+### 12.6 Files modified (primary)
+
+`employees/models.py`, `views.py`, `urls.py`, `serializers.py`, `admin.py`,
+`template_views.py`, `dashboard_context.py`, `context_processors.py`,
+`config/settings.py`, `templates/base.html`, `templates/dashboard.html`,
+`employees/management/commands/seed_data.py`, `static/css/hris.css`,
+`static/js/hris.js`, new partials under `templates/partials/`.
+
+### 12.7 Known limitations / future work
+
+- Holiday and announcement widgets are placeholder empty states (no backend yet).
+- Notifications icon is UI-only.
+- Account Settings links to profile edit (no separate settings module).
+- Attendance does not yet support multiple shifts per day or geo-fencing.
+- §9.1 backend bugs (open registration, leave PATCH status, duplicate audit,
+  `post_save` profile signal) remain — not addressed in this UI pass.
+
+---
+
+## 13. Production Stabilization — URL & Profile Flow (May 2026)
+
+### 13.1 Root cause: DRF / UI URL name collision
+
+`reverse('employee-detail', pk)` returned `/api/v1/employees/{pk}/` because the
+DRF `DefaultRouter` registered `basename='employee'`, producing the same URL
+names as `config/urls.py` template routes. Every `{% url 'employee-detail' %}`
+in the profile dropdown sent users to the **Browsable API** page.
+
+### 13.2 Fixes applied
+
+| Change | Purpose |
+|--------|---------|
+| UI names prefixed `hris-*` | Unique reverse targets for templates |
+| `app_name = 'api'` + `namespace='api'` | API reverses as `api:employee-detail` |
+| `DEFAULT_RENDERER_CLASSES = [JSONRenderer]` | No DRF HTML in browser by default |
+| `ApiBrowserRedirectMiddleware` | Safety net: HTML GET on `/api/v1/employees/…` → `/employees/…` |
+| `/profile/` + `MyProfileRedirectView` | Clean “my profile” entry point |
+| `employee_detail.html` overhaul | Attendance + leave summaries, contact tab, enterprise layout |
+
+### 13.3 UI ↔ API mapping (profile)
+
+| User action | UI route | Backend data |
+|-------------|----------|--------------|
+| View Profile (dropdown) | `GET /profile/` → redirect `/employees/{id}/` | `EmployeeDetailView` + ORM |
+| Edit Profile | `GET /employees/{id}/edit/` | Form POST to same view (not API) |
+| Check-in on profile | Button → `POST /api/v1/attendance/check_in/` | JSON only; page reload |
+| Directory → View | `GET /employees/{id}/` | Template |
+
+### 13.4 Tests added
+
+- `tests/test_navigation.py` — routing, middleware redirect, no DRF HTML on profile page
+- `tests/test_attendance.py` — unchanged; 9 tests pass together
+
+### 13.5 Enable browsable API (developers only)
+
+Set environment variable `ENABLE_DRF_BROWSABLE_API=true` — still use `api:` namespace
+for programmatic reverse; normal UI links must use `hris-*` names.
